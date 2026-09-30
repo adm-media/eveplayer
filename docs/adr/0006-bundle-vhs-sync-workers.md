@@ -39,6 +39,12 @@ It reproduces only when **all three** hold:
   conservative and does not. A webpack build with near-default Terser options is
   usually spared too; an aggressive CRA-style preset reliably triggers it.
 
+> **Corrected on 2026-09-30.** A controlled reproduction (see *Update:
+> reproduction* below) showed that the minifier is not the cause and that the
+> crash is not limited to MPEG-TS. The consumer's **Babel** pass over
+> `node_modules` injects module-scope helper imports into the worker function;
+> Terser only renames the missing helper to `f`. The decision stands.
+
 A consumer *can* patch around it (alias `@videojs/http-streaming` to a prebuilt
 VHS bundle, or exclude it from minification), but that is one workaround per
 consuming project, re-applied on every CRA/webpack app.
@@ -105,7 +111,13 @@ first cut, VHS only, `video.js` left external, turned out not to be enough).
   resolved and processed by the consumer.
 - **Consumer minifier config only** (`keep_fnames` etc.). Rejected: the free
   identifier comes from `compress` hoisting, not only from `mangle`, so
-  `keep_fnames` is not a reliable fix, and it is still per-consumer.
+  `keep_fnames` is not a reliable fix, and it is still per-consumer. (The
+  2026-09-30 reproduction goes further: the build breaks with minification
+  turned off entirely, so no minifier setting can fix it.)
+- **Declare `video.js` / VHS as `peerDependencies`.** Same outcome as leaving
+  them `external`: the consumer's toolchain resolves, transpiles and minifies
+  VHS. Measured on 2026-09-30 to break under a CRA-style Babel pass and to
+  ship two copies of VHS (see below).
 
 ## Consequences
 
@@ -178,3 +190,52 @@ first cut, VHS only, `video.js` left external, turned out not to be enough).
     `require` at all, zero `getWorkerString` / `new Worker(` / `workerCode`; a
     jsdom smoke test imports `dist/index.js`, constructs `EvePlayer`, and
     runs `setSource()` without throwing.
+
+## Update: reproduction (2026-09-30)
+
+Before the 1.0 release the decision was re-checked with a controlled
+experiment instead of relying on the original field report.
+
+**Setup.** The current `src/` was built the pre-decision way (`external:
+['video.js', '@videojs/http-streaming']`, no aliases, not minified) and
+imported by a one-file consumer app that creates an `EvePlayer` and plays an
+HLS source. Each app build was loaded in headless Google Chrome (real H.264
+support) against a public MPEG-TS stream and a public fMP4 stream; a run
+passes when playback advances and no worker reports an error. The same app
+was also built against the published `@admmedia/eveplayer@1.0.0`.
+
+| Consumer build | `external` layout | Published 1.0.0 |
+|---|---|---|
+| webpack 5 + Terser 5, or Terser 4.8.1 with the CRA 4 `terserOptions`; no Babel over dependencies | plays (TS and fMP4) | plays |
+| Create React App 4 production pipeline: webpack 4.44, `babel-preset-react-app/dependencies` with `helpers: true` and a production `browserslist` (`>0.2%, not dead, not op_mini all`), Terser 4.8.1 | **broken**: `Uncaught ReferenceError: f is not defined` in the worker, playback stuck at 0, **TS and fMP4** | plays, no worker created |
+| the same CRA 4 pipeline with minification turned off | **broken**: `…babel_runtime_helpers_esm_createClass_js__WEBPACK_IMPORTED_MODULE_11__ is not defined` | not run |
+
+**Root cause.** Create React App (and any webpack setup that runs Babel with
+helpers over `node_modules`) transpiles VHS's worker function for the
+production browser targets. Transpiling the classes inside that function makes
+Babel add imports of runtime helpers (`_createClass`, …) at **module** scope.
+`getWorkerString(fn)` then serialises a body that calls those helpers without
+containing them, and the Blob worker throws as soon as it evaluates. Terser only
+renamed the missing helper to `f`. This also explains why dev builds were
+unaffected: CRA's development `browserslist` targets current browsers only, so
+no class transform and no helpers.
+
+This corrects the Context above on two points: the minifier is not the cause,
+and the failure is not limited to MPEG-TS (the worker dies at start-up, which
+stalls fMP4 playback as well in this setup). It does not change the decision.
+It strengthens it: whether an `external` or peer-dependency VHS works depends
+on how each consumer compiles `node_modules`, which a published library cannot
+control.
+
+**Size.** The `external` layout also ships **two copies of VHS**: the default
+`video.js` entry (`video.es.js`) bundles one, and the separate
+`@videojs/http-streaming` import adds the other. Measured on the same app:
+
+| Consumer build | `external` layout | Published 1.0.0 |
+|---|---|---|
+| webpack 5, default production minification | 1.06 MB (299 KB gzip) | 0.74 MB (212 KB gzip) |
+| CRA 4 pipeline | 1.20 MB (324 KB gzip) | 0.88 MB (240 KB gzip) |
+
+The saving comes from the entry points chosen (`core.es.js` plus a single VHS),
+not from inlining as such. It holds as long as the consuming app does not load a
+second `video.js` of its own.
