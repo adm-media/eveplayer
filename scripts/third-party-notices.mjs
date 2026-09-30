@@ -58,7 +58,8 @@ const sections = [...names].sort().map((name) => {
   const repository = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url;
   return [
     `${name} ${pkg.version}`,
-    `License: ${pkg.license}`,
+    // Older packages declare `licenses: [{ type }]` instead of `license`.
+    `License: ${pkg.license ?? pkg.licenses?.map((l) => l.type).join(' OR ') ?? 'see text below'}`,
     ...(pkg.homepage || repository ? [`Source: ${pkg.homepage ?? repository}`] : []),
     '',
     readFileSync(join(dir, licenceFile), 'utf8').trim(),
