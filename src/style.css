@@ -1,0 +1,1208 @@
+/*
+ * Copyright 2026 ADM Media Consulting SA
+ * SPDX-License-Identifier: Apache-2.0
+ */
+@import 'video.js/dist/video-js.css';
+
+/* ============================================================
+   Design tokens
+   ============================================================ */
+:root {
+  --eve-accent:          #e00;
+  --eve-control-bg:      rgba(0, 0, 0, 0.55);
+  --eve-control-color:   #fff;
+  --eve-radius:          4px;
+  --eve-bar-height:      42px;
+  --eve-progress-row-height: 7px;
+  --eve-progress-dot-size: 12px;
+  --eve-volume-dot-size: 10px;
+  --eve-control-width:   3em;
+  --eve-transition:      0.18s ease;
+  --eve-pip-width:       340px;
+  --eve-pip-radius:      10px;
+  --eve-pip-shadow:      0 12px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================================
+   Layout helpers
+   ============================================================ */
+.vjsp-widescreen { aspect-ratio: 16 / 9; width: 100%; }
+
+.vjsp-hide-play .vjs-big-play-button { display: none; }
+
+.vjsp-hidden { visibility: hidden; }
+
+/* Decorative background mode: the control bar / big play button / caption
+   display are already gone via video.js's own `.vjs-controls-disabled`
+   (set from the `controls: false` we pass in for this mode) — but the
+   loading spinner and error overlay aren't tied to that class, so they'd
+   still pop up over what's meant to be a chromeless backdrop. */
+.vjsp-background .vjs-loading-spinner,
+.vjsp-background .vjs-error-display {
+  display: none;
+}
+
+/* ============================================================
+   Control bar
+   ============================================================ */
+/* Base size for every em-sized control (icons, volume slider, menus).
+   video.js's own default is 10px; bumped up so the whole control bar reads
+   larger without every measurement needing an individual override. */
+.video-js {
+  font-size: 12px;
+}
+
+.video-js .vjs-control-bar {
+  background: linear-gradient(to top,
+    rgba(0, 0, 0, 0.82) 0%,
+    rgba(0, 0, 0, 0.38) 60%,
+    transparent         100%
+  );
+  /* Total height covers the button row (--eve-bar-height) plus a strip on
+     top reserved for the progress bar (--eve-progress-row-height), which is
+     pulled out of flow and pinned there below — see "Progress / seek bar".
+     No `position` override here: the base skin already docks this element
+     with `position: absolute; bottom: 0` inside the player, which is also a
+     valid containing block for the progress bar's `position: absolute`
+     below — overriding it to `relative` pulls the whole control bar out of
+     that dock and into normal document flow, rendering it below the player
+     instead of inside it. */
+  height: calc(var(--eve-bar-height) + var(--eve-progress-row-height));
+  padding: var(--eve-progress-row-height) 6px 0;
+  align-items: center;
+  gap: 2px;
+  transition: opacity var(--eve-transition);
+}
+
+/* Right-hand control group, forced into a fixed order regardless of the
+   order components were added to the control bar in (our custom buttons —
+   pip, settings — are appended via `addChild` in EveVideoPlayer.ts, which
+   puts them after `fullscreenToggle` in the DOM/default flex order).
+   Everything below just needs a higher `order` than the spacer to land
+   after it, in this sequence. The settings flyout (`.vjsp-settings-menu`)
+   is positioned with a hardcoded `right: 6px` (see that rule below), i.e.
+   anchored to the player's right edge rather than to the gear button's own
+   bounding rect — so it lines up the same way regardless of where exactly
+   the gear sits in this group (which is just left of fullscreen). */
+/* Base skin ships this hidden (`display: none`) and only turns it into a
+   flexible spacer (`flex: auto`) at the `.vjs-layout-x-small` breakpoint —
+   normally the job of pushing trailing controls to the right edge falls to
+   `.vjs-progress-control`'s own `flex: auto`, which grows to fill the row.
+   Since the progress bar is now `position: absolute` (pulled out of this
+   flex row entirely — see "Progress / seek bar" below), nothing is left to
+   consume the remaining width, so this has to take over that job instead. */
+.video-js .vjs-custom-control-spacer {
+  display: block;
+  flex: auto;
+  order: 1;
+}
+
+.video-js .vjs-audio-button {
+  order: 2;
+}
+
+.video-js .vjs-subs-caps-button {
+  order: 3;
+}
+
+/* Chapters button — a default control-bar child, so without an explicit order
+   it keeps `order: 0` and drifts into the left-hand group. Pin it next to the
+   other track menus. */
+.video-js .vjs-chapters-button {
+  order: 4;
+}
+
+.video-js .vjsp-pip-button {
+  order: 5;
+}
+
+.video-js .vjsp-settings-button {
+  order: 6;
+}
+
+.video-js .vjs-fullscreen-control {
+  order: 7;
+}
+
+/* ============================================================
+   Buttons (generic)
+   ============================================================ */
+/* Base skin's `.vjs-control` default is `width: 4em` — narrower controls
+   (play, mute, CC, audio track, pip, quality, fullscreen, etc. all share
+   this class) read closer to the tighter control-bar spacing of most commercial players. */
+.video-js .vjs-control {
+  width: var(--eve-control-width);
+}
+
+.video-js .vjs-button > .vjs-icon-placeholder::before {
+  font-size: 1.9em;
+  line-height: var(--eve-bar-height);
+}
+
+.video-js .vjs-control:hover,
+.video-js .vjs-control:focus-visible {
+  color: var(--eve-accent, #e00);
+  outline: none;
+  text-shadow: none;
+}
+
+/* ============================================================
+   Button tooltips
+   ============================================================ */
+/* Video.js already renders a `.vjs-control-text` span inside every
+   control-bar button — the native ones, plus our PiP / settings buttons
+   which set it via `controlText(...)` in EveVideoPlayer.ts. The base skin
+   keeps that span sr-only (clipped to 1px); here we surface it as a small
+   bubble above the button on pointer hover / keyboard focus. Native
+   buttons with stateful labels (Play/Pause, Mute/Unmute) rewrite the same
+   span, so the tooltip text tracks button state for free. Scoped to
+   `.vjs-button` so the progress bar and volume slider — which also carry a
+   `.vjs-control-text` — are left alone. Mirrors the `.vjsp-bookmark-tooltip`
+   pattern below (same tokens, same blur). */
+.video-js .vjs-control-bar .vjs-button {
+  /* containing block + escape hatch for the absolutely-positioned bubble */
+  position: relative;
+  overflow: visible;
+}
+
+.video-js .vjs-control-bar .vjs-button > .vjs-control-text {
+  /* undo the base skin's sr-only clip, re-place as a tooltip */
+  clip: auto;
+  clip-path: none;
+  overflow: visible;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 4px 8px;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--eve-control-bg);
+  color: var(--eve-control-color);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  border-radius: var(--eve-radius);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--eve-transition), transform var(--eve-transition);
+  z-index: 3;
+}
+
+.video-js .vjs-control-bar .vjs-button:hover > .vjs-control-text,
+.video-js .vjs-control-bar .vjs-button:focus-visible > .vjs-control-text {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Rightmost button (fullscreen — always last, order: 7): anchor the bubble
+   to the button's right edge so it can't spill past the player. */
+.video-js .vjs-control-bar .vjs-fullscreen-control > .vjs-control-text {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(4px);
+}
+.video-js .vjs-control-bar .vjs-fullscreen-control:hover > .vjs-control-text,
+.video-js .vjs-control-bar .vjs-fullscreen-control:focus-visible > .vjs-control-text {
+  transform: translateX(0) translateY(0);
+}
+
+/* Belt-and-braces: never let a tooltip linger once the control bar has
+   faded out over a chromeless video (the parent's own opacity would hide
+   it anyway, but a hover mid-fade could still flash it). */
+.video-js.vjs-user-inactive.vjs-playing .vjs-control-bar .vjs-button > .vjs-control-text {
+  opacity: 0 !important;
+}
+
+/* Touch devices: no hover intent and tap doesn't raise :focus-visible —
+   keep the bubbles out entirely. */
+@media (hover: none) {
+  .video-js .vjs-control-bar .vjs-button > .vjs-control-text {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Big play button
+   ============================================================ */
+.video-js .vjs-big-play-button {
+  width: 78px;
+  height: 78px;
+  line-height: 74px;
+  margin-top: -39px;
+  margin-left: -39px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  font-size: 2.3em;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: transform var(--eve-transition), background var(--eve-transition);
+}
+
+.video-js:hover .vjs-big-play-button,
+.video-js .vjs-big-play-button:focus-visible {
+  background: rgba(0, 0, 0, 0.50);
+  transform: scale(1.08);
+  outline: none;
+}
+
+/* ============================================================
+   Progress / seek bar
+   ============================================================ */
+/* Pulled out of the control-bar's button row and pinned into the strip
+   reserved above it (see .vjs-control-bar's padding-top), so it reads as its
+   own row above play/pause, volume, quality, etc. instead of sitting inline
+   with them. `position: absolute` only affects layout, not behavior — VHS
+   drag/seek logic is unaffected by DOM/visual position. */
+.video-js .vjs-progress-control {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  /* Explicit width rather than `left` + `right` — this element is also a
+     flex item of `.vjs-control-bar` (its `display: flex` comes from the
+     base skin and is left as-is so its own children, e.g.
+     `.vjs-progress-holder`, keep stretching via their `flex: auto`); with
+     both display: flex and position: absolute in play, some engines fell
+     back to the `min-width: 4em` from the base skin instead of resolving
+     `left`/`right` into a stretched width, shrinking the bar to a short
+     stub in the top-left corner instead of spanning the bar. */
+  width: calc(100% - 12px);
+  height: var(--eve-progress-row-height);
+  margin: 0;
+  transition: all var(--eve-transition);
+}
+
+/* Base skin hides this for `.vjs-live` outright, only bringing it back for
+   `.vjs-liveui` (added when LiveTracker considers the stream seekable within
+   its DVR window). We want the bar visible at full width for every live
+   stream regardless of that DVR-seekable detection, so force it back on. */
+.vjs-live .vjs-progress-control {
+  display: flex;
+}
+
+.video-js .vjs-progress-holder {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+  transition: height var(--eve-transition);
+}
+
+.video-js:hover .vjs-progress-holder,
+.video-js .vjs-progress-control:hover .vjs-progress-holder {
+  height: 5px;
+}
+
+.video-js .vjs-load-progress,
+.video-js .vjs-load-progress div {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 2px;
+}
+
+.video-js .vjs-play-progress {
+  background-color: var(--eve-accent, #e00);
+  border-radius: 2px;
+}
+
+/* Video.js's SeekBar sets this element's `width` as an inline style on every
+   `timeupdate` (percent played), so a plain CSS `width` here would only ever
+   apply for one frame before JS overwrites it — `!important` is required to
+   keep it pinned at 100% for live streams. Purely a visual override: the
+   fill always reads as fully "caught up", but the seek bar underneath is
+   untouched and remains draggable/seekable exactly as before. There's no
+   separate flag in this codebase for a "fake" vs. real live source — both
+   get Video.js's `.vjs-live` class the same way, so both get this fill. */
+.vjs-live .vjs-play-progress {
+  width: 100% !important;
+}
+
+/* Scrubber thumb. Hidden by default; shown only when the `showProgressDot`
+   option is set (it adds `.vjsp-show-progress-dot` on the container, see
+   EvePlayer.ts).
+
+   Drawn as a real box (`content: ''` + `border-radius: 50%`) instead of the
+   base skin's VideoJS-font circle glyph. A glyph is positioned by font
+   metrics (the base skin fakes it with `line-height: 0.35em` and no `top`),
+   so its optical center never lands exactly on a 3px bar that grows to 5px
+   on hover; an empty box of known size does, via `top: 50%` +
+   `translateY(-50%)`, at any bar height. `right: 0` + `translateX(50%)`
+   likewise centers it on the playhead rather than the glyph's own advance
+   width. `font-size`/`line-height` are zeroed so the base skin's values
+   can't give the (now empty) box height of its own. */
+.video-js .vjs-play-progress::before {
+  content: '';
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: var(--eve-progress-dot-size);
+  height: var(--eve-progress-dot-size);
+  border-radius: 50%;
+  background-color: var(--eve-accent, #e00);
+  font-size: 0;
+  line-height: 0;
+  transform: translate(50%, -50%);
+  transition: transform var(--eve-transition);
+}
+
+.vjsp-show-progress-dot .vjs-play-progress::before {
+  display: block;
+}
+
+.video-js:hover .vjs-play-progress::before {
+  transform: translate(50%, -50%) scale(1.3);
+}
+
+/* ============================================================
+   Volume
+   ============================================================ */
+/* `.vjs-volume-panel` is `display: flex` with no `align-items` set, so it
+   defaults to `stretch` — but `.vjs-volume-control` has an explicit height
+   (3em, from the base skin), which stretch can't apply to, so it falls back
+   to flex-start and pins the slider to the top of the 44px row instead of
+   centering it like every other control. Same underlying issue as the live
+   indicator above. */
+.video-js .vjs-volume-panel {
+  align-items: center;
+}
+
+.video-js .vjs-volume-bar.vjs-slider-horizontal {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+  height: 3px;
+}
+
+.video-js .vjs-volume-level {
+  background: var(--eve-control-color);
+  border-radius: 2px;
+}
+
+/* Volume handle. Same construction (and the same reasons) as the scrubber
+   thumb above, but note the base skin shows this one by default, so hiding
+   it is an actual change of behavior: it appears only with the
+   `showVolumeDot` option (which adds `.vjsp-show-volume-dot` on the
+   container). It takes the control color rather than the accent, matching
+   the bar it rides on. */
+.video-js .vjs-volume-level::before {
+  content: '';
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: var(--eve-volume-dot-size);
+  height: var(--eve-volume-dot-size);
+  border-radius: 50%;
+  background-color: var(--eve-control-color);
+  font-size: 0;
+  line-height: 0;
+  transform: translate(50%, -50%);
+}
+
+/* The volume slider is horizontal in this skin, but video.js can render it
+   vertically (`volumePanel: { inline: false }`), where the level fills
+   bottom-up and the handle belongs on its top edge. */
+.video-js .vjs-slider-vertical .vjs-volume-level::before {
+  top: 0;
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.vjsp-show-volume-dot .vjs-volume-level::before {
+  display: block;
+}
+
+/* ============================================================
+   Time display
+   ============================================================ */
+.video-js .vjs-time-control {
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  padding: 0 4px;
+  line-height: var(--eve-bar-height);
+  min-width: auto;
+}
+
+/* video.js hides current-time/duration and shows remaining-time by default.
+   Flip that so current/duration display next to the mute button instead —
+   they already sit right after volumePanel in the default control-bar child
+   order, so no component reordering is needed, just visibility. */
+.video-js .vjs-current-time,
+.video-js .vjs-duration {
+  display: flex;
+}
+
+.video-js .vjs-remaining-time {
+  display: none;
+}
+
+.video-js .vjs-time-divider {
+  display: flex;
+  min-width: 8px;
+  padding: 0 2px;
+  line-height: var(--eve-bar-height);
+}
+
+/* The base skin already hides current-time/duration/divider for `.vjs-live`
+   (they share the `.vjs-time-control` class, targeted by its own
+   `.vjs-live .vjs-time-control` rule) — but our unconditional `display: flex`
+   rules above have equal selector specificity, so whichever is declared last
+   wins ties. This has to stay the last word on all three, current-time,
+   duration, AND the divider between them, or the divider is left standing
+   on its own once the numbers around it disappear. */
+.vjs-live .vjs-current-time,
+.vjs-live .vjs-duration,
+.vjs-live .vjs-time-divider {
+  display: none;
+}
+
+/* ============================================================
+   Live indicator
+   ============================================================ */
+/* Video.js's base skin sets `align-items: flex-start` here, which pins the
+   "LIVE" text to the top of the control bar row instead of centering it
+   like every other control (buttons via the icon-placeholder line-height
+   rule above, time displays via their own line-height). `em`, not `rem` —
+   every other size in this stylesheet cascades from `.video-js`'s own
+   font-size (12px) rather than the page root's, which is why `1rem` here
+   previously rendered far too large (it picked up the page's own root
+   font-size instead, typically 16px+, ignoring the 12px local baseline). */
+.video-js .vjs-live-control {
+  align-items: center;
+  font-size: 1em;
+}
+
+/* Red dot before "LIVE", matching the accent-independent red used by the
+   seek-to-live control below (and by consuming apps' own fake-live
+   indicators) — the live dot always reads as red, never the theme color. */
+.vjs-live-control .vjs-live-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.vjs-live-control .vjs-live-display:before {
+  content: '';
+  flex-shrink: 0;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background-color: #e00;
+}
+
+/* Real live sources with a seekable/DVR window get `.vjs-seek-to-live-control`
+   instead of the plain `.vjs-live-control` above (video.js swaps between them
+   via the `.vjs-liveui` class once `liveTracker` detects a seekable range).
+   It ships with zero sizing beyond the video.js default — bump it in step
+   with `.vjs-live-control`. The dot itself is drawn via a shared video.js
+   rule also used by the volume-level and play-progress scrubber dots, so
+   this re-targets its own exact selector (video.js's own rule includes it
+   in a comma-list) rather than resizing that shared rule, which would also
+   resize those unrelated dots. Colors (red at live edge / gray behind) are
+   left as video.js's own hardcoded defaults on purpose — the live indicator
+   always reads as red/gray, never the brand accent color. */
+.video-js .vjs-seek-to-live-control {
+  font-size: 1em;
+}
+
+.vjs-seek-to-live-control .vjs-icon-placeholder:before {
+  font-size: 1.1em;
+}
+
+/* "-M:SS" drift countdown, injected next to the "LIVE" text by EveVideoPlayer.ts
+   while behind the live edge; empty (and so invisible) at the live edge. */
+.vjsp-live-behind-time {
+  margin-left: 0.3em;
+  color: var(--eve-control-color);
+  opacity: 0.75;
+}
+
+/* ============================================================
+   Settings menu (gear) — quality + playback speed
+   ============================================================ */
+/* Gear button: center the injected SVG in the control slot, same as the PiP
+   button, and tint it with the accent colour while the flyout is open. */
+.vjsp-settings-button .vjs-icon-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.vjsp-settings-button.vjsp-settings-button--open .vjs-icon-placeholder svg {
+  color: var(--eve-accent, #e00);
+}
+
+/* The flyout is appended as a sibling of the control bar (not a child of the
+   gear button), so it's anchored here by fixed offsets from the player's
+   bottom-right corner instead of the button-relative positioning video.js's
+   native popup menus get for free. Without this it falls back to normal
+   document flow and renders pinned to the player's top-left corner.
+   Translucent (not a hard blur panel) so the video reads through it. */
+.vjsp-settings-menu {
+  position: absolute;
+  right: 6px;
+  bottom: calc(var(--eve-bar-height) + 8px);
+  z-index: 2;
+  min-width: 15em;
+  max-width: 22em;
+  padding: 0.4em 0;
+  background: rgba(28, 28, 28, 0.82);
+  color: var(--eve-control-color);
+  border-radius: var(--eve-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  font-size: 1.1em;
+  overflow: hidden;
+}
+
+.vjsp-settings-menu--hidden {
+  display: none;
+}
+
+.vjsp-settings-menu__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.2em 1em 0.5em;
+  margin-bottom: 0.3em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* `.video-js button` (video.js base reset) is specificity (0,1,1) and forces
+   `display: inline-block` on every <button>, which would kill the flex layout
+   of these rows (label + right-aligned value). Every button rule below is
+   therefore qualified with `.video-js` (0,2,x) to win — the menu is appended
+   inside the video.js root element, so the ancestor always matches. */
+.video-js .vjsp-settings-menu__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7em;
+  height: 1.7em;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.vjsp-settings-menu__back svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.video-js .vjsp-settings-menu__back:hover,
+.video-js .vjsp-settings-menu__back:focus-visible {
+  color: var(--eve-accent, #e00);
+  outline: none;
+}
+
+.vjsp-settings-menu__title {
+  font-weight: 700;
+}
+
+.vjsp-settings-menu__body {
+  max-height: 15em;
+  overflow-y: auto;
+}
+
+.video-js .vjsp-settings-row,
+.video-js .vjsp-settings-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5em 1em;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vjsp-settings-row__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Push the value to the right edge regardless of label width. `margin-left:
+   auto` rather than `justify-content: space-between` so it holds up even if a
+   base-skin rule ever re-touches the flex container. */
+.vjsp-settings-row__value {
+  margin-left: auto;
+  padding-left: 1.5em;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.video-js .vjsp-settings-row:hover,
+.video-js .vjsp-settings-row:focus-visible,
+.video-js .vjsp-settings-option:hover,
+.video-js .vjsp-settings-option:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+.video-js .vjsp-settings-option {
+  gap: 0.6em;
+}
+
+.vjsp-settings-option__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.1em;
+  color: var(--eve-accent, #e00);
+  visibility: hidden;
+}
+
+.vjsp-settings-option__check svg {
+  width: 1em;
+  height: 1em;
+}
+
+.video-js .vjsp-settings-option--active {
+  font-weight: 700;
+}
+
+.vjsp-settings-option--active .vjsp-settings-option__check {
+  visibility: visible;
+}
+
+/* ============================================================
+   Native track menus (audio language / subtitles-captions / chapters)
+   ------------------------------------------------------------
+   video.js's built-in popup menus for the audio-track, subs/caps and chapters
+   buttons are restyled to match `.vjsp-settings-menu`: same translucent dark
+   panel, left-aligned rows, hover tint, and an accent checkmark (the same
+   Feather glyph, via a mask) on the selected row instead of the base skin's
+   solid white block. For the chapters menu the checkmark marks the chapter
+   currently playing (video.js re-selects it on every `cuechange`); clicking a
+   row seeks to that chapter.
+
+   They are also lifted out of their control-bar button and re-parented as a
+   direct child of the player root, tagged `.vjsp-hoisted-menu`
+   (EveVideoPlayer._hoistNativeMenus). That does two things at once:
+     - anchors every popup to the player's bottom-right corner, exactly where
+       the settings flyout opens (one spot for all menus),
+       because the menu now shares the player root as its containing block;
+     - makes it CLICK-only. The base skin opens these on hover via
+       `.vjs-workinghover .vjs-menu-button-popup.vjs-hover .vjs-menu`, a
+       descendant selector that no longer matches once the menu isn't inside
+       the button. Click still works: it toggles `.vjs-lock-showing` on the
+       menu element directly (MenuButton.pressButton), which is all the
+       show/hide rules below key off.
+
+   `text-transform: none` matters too: the base skin forces menu items to
+   lowercase, which is why native language menus read "english" not "English".
+   ============================================================ */
+.video-js .vjsp-hoisted-menu {
+  position: absolute;
+  left: auto;
+  /* Same anchor as `.vjsp-settings-menu`. */
+  right: 6px;
+  bottom: calc(var(--eve-bar-height) + 8px);
+  width: 16em;
+  height: 0;
+  margin: 0;
+  z-index: 2;
+  display: none;
+}
+
+/* Shown only while "locked" open by a click — never on hover. */
+.video-js .vjsp-hoisted-menu.vjs-lock-showing {
+  display: block;
+}
+
+.video-js .vjsp-hoisted-menu .vjs-menu-content {
+  /* Base skin floats this `bottom: 1.5em` above the zero-height `.vjs-menu`
+     anchor; pin it flush so the panel grows straight up from `bottom` above. */
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 0.4em 0;
+  max-height: 15em;
+  background: rgba(28, 28, 28, 0.82);
+  border-radius: var(--eve-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  overflow: hidden auto;
+}
+
+.video-js .vjsp-hoisted-menu li.vjs-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.5em 1em 0.5em 2.4em;
+  font-size: 1.1em;
+  line-height: 1.4;
+  text-align: left;
+  text-transform: none;
+  color: var(--eve-control-color);
+  cursor: pointer;
+}
+
+.video-js .vjsp-hoisted-menu li.vjs-menu-item:hover,
+.video-js .vjsp-hoisted-menu li.vjs-menu-item:focus {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: var(--eve-control-color);
+}
+
+/* video.js ships `.video-js .vjs-menu *:not(.vjs-selected):focus:not(:focus-visible)
+   { background: none }` (specificity 0,5,0), which suppresses the hover tint on
+   whichever item got programmatic focus when the menu opened — usually the
+   first one in the list. Re-assert :hover through `.vjs-menu-content` so it
+   carries an extra class and outweighs that rule (0,5,1). */
+.video-js .vjsp-hoisted-menu .vjs-menu-content li.vjs-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: var(--eve-control-color);
+}
+
+/* Selected row: same treatment as the settings menu's active quality/speed
+   option — bold only, NOT recoloured; the checkmark carries the accent. Just
+   the base skin's solid white block is neutralised here. (Hover/focus are left
+   to the generic rule above so the selected row still highlights on hover.) */
+.video-js .vjsp-hoisted-menu li.vjs-selected {
+  background-color: transparent;
+  color: var(--eve-control-color);
+  font-weight: 700;
+}
+
+.video-js .vjsp-hoisted-menu li.vjs-selected::before {
+  content: '';
+  position: absolute;
+  left: 1em;
+  top: 50%;
+  width: 1.1em;
+  height: 1.1em;
+  transform: translateY(-50%);
+  background-color: var(--eve-accent, #e00);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.video-js .vjsp-hoisted-menu li.vjs-menu-title {
+  margin: 0 0 0.3em;
+  padding: 0.2em 1em 0.5em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 1.05em;
+  line-height: 1.4;
+  text-align: left;
+  text-transform: none;
+  color: var(--eve-control-color);
+}
+
+/* Chapters menu: a chapter list is usually longer than an audio/subs menu and
+   its labels are full sentences, so give it a taller scroll area and let rows
+   wrap instead of clipping. */
+.video-js .vjsp-hoisted-menu--chapters {
+  width: 20em;
+}
+
+.video-js .vjsp-hoisted-menu--chapters .vjs-menu-content {
+  max-height: 20em;
+}
+
+.video-js .vjsp-hoisted-menu--chapters li.vjs-menu-item {
+  white-space: normal;
+}
+
+/* ============================================================
+   Caption (text-track) settings dialog
+   ------------------------------------------------------------
+   video.js's native `TextTrackSettings` modal (opened from the "captions
+   settings" entry in the subs/caps menu — hidden entirely via the
+   `captionSettings: false` player option, which drops the child). The base
+   skin renders it as a full-bleed slate overlay with OS-default <select>s and
+   gradient buttons; this re-skins it into a centred EVE panel matching
+   `.vjsp-settings-menu`: translucent dark card, accent buttons, flat controls.
+
+   The base skin pins `.vjs-modal-dialog-content` to `position: absolute` /
+   inset 0 (shared rule, specificity (0,2,0)) and a `@supports (display:grid)`
+   block re-pads it — every override here is `.video-js`-qualified (≥(0,3,0))
+   so it wins in both directions without `!important`.
+   ============================================================ */
+.video-js .vjs-modal-dialog.vjs-text-track-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2em 1em;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.video-js .vjs-text-track-settings .vjs-modal-dialog-content {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: auto;
+  height: auto;
+  max-width: min(680px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 0 2.4em;
+  padding: 1.2em 1.4em;
+  font-size: 1.05em;
+  line-height: 1.4;
+  color: var(--eve-control-color);
+  background: rgba(28, 28, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--eve-radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@media (max-width: 600px) {
+  .video-js .vjs-text-track-settings .vjs-modal-dialog-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Close (×) button — now anchored to the card (which is `position: relative`). */
+.video-js .vjs-text-track-settings .vjs-close-button {
+  top: 0.2em;
+  right: 0.2em;
+  height: 2em;
+  color: rgba(255, 255, 255, 0.7);
+  transition: color var(--eve-transition);
+}
+
+.video-js .vjs-text-track-settings .vjs-close-button:hover,
+.video-js .vjs-text-track-settings .vjs-close-button:focus-visible {
+  color: var(--eve-control-color);
+  outline: none;
+}
+
+/* The base skin splits the sections into two wrapper divs (`…-colors` with the
+   three colour fieldsets, `…-font` with the three font fieldsets) and lays
+   them out as `display: table-cell`. `display: contents` dissolves both
+   wrappers so all six fieldsets become direct items of the grid above, then
+   `order` interleaves them into aligned rows:
+     Text                    | Font Size
+     Text Background          | Text Edge Style
+     Caption Area Background  | Font Family
+   Each row's two legends start at the same y (`align-items: start`). */
+.video-js .vjs-text-track-settings .vjs-track-settings-colors,
+.video-js .vjs-text-track-settings .vjs-track-settings-font {
+  display: contents;
+}
+
+.video-js .vjs-text-track-settings .vjs-fg {
+  order: 1;
+}
+.video-js .vjs-text-track-settings .vjs-font-percent {
+  order: 2;
+}
+.video-js .vjs-text-track-settings .vjs-bg {
+  order: 3;
+}
+.video-js .vjs-text-track-settings .vjs-edge-style {
+  order: 4;
+}
+.video-js .vjs-text-track-settings .vjs-window {
+  order: 5;
+}
+.video-js .vjs-text-track-settings .vjs-font-family {
+  order: 6;
+}
+.video-js .vjs-text-track-settings .vjs-track-settings-controls {
+  order: 7;
+}
+
+.video-js .vjs-text-track-settings fieldset {
+  margin: 0 0 1.1em;
+  padding: 0;
+  border: none;
+}
+
+/* `display: block` + `width: 100%` normalise the browser's special-case
+   <legend> rendering — otherwise it floats in the (now removed) border gap
+   and reads as detached from its own controls. */
+.video-js .vjs-text-track-settings legend {
+  display: block;
+  width: 100%;
+  margin: 0 0 0.6em;
+  padding: 0;
+  color: var(--eve-control-color);
+  font-size: 1em;
+  font-weight: 700;
+}
+
+/* Colours column: each <span> is a "label + select" pair. Stack the pairs as
+   their own rows, with the label given a fixed column so every select lines
+   up and sits well clear of its label. */
+.video-js .vjs-text-track-settings fieldset span {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  margin: 0 0 0.45em;
+}
+
+.video-js .vjs-text-track-settings .vjs-label {
+  flex: 0 0 auto;
+  min-width: 4.5em;
+  margin: 0 0.9em 0 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Flat EVE-style controls in place of the OS-default look. `option` is forced
+   dark-on-light because the popped-open list is painted by the OS on most
+   platforms and would otherwise inherit white text on white. */
+.video-js .vjs-text-track-settings select {
+  max-width: 100%;
+  margin: 0;
+  padding: 0.35em 0.5em;
+  color: var(--eve-control-color);
+  font: inherit;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--eve-radius);
+}
+
+.video-js .vjs-text-track-settings fieldset span > select {
+  flex: 1 1 auto;
+  max-width: 9em;
+}
+
+.video-js .vjs-text-track-settings select:focus-visible {
+  outline: none;
+  border-color: var(--eve-accent, #e00);
+}
+
+.video-js .vjs-text-track-settings select option {
+  color: #000;
+  background: #fff;
+}
+
+/* Reset / Done row — accent-filled Done, ghost Reset, matching the flyout. */
+.video-js .vjs-text-track-settings .vjs-track-settings-controls {
+  display: block;
+  grid-column: 1 / -1;
+  margin-top: 0.4em;
+  padding-top: 0.8em;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  text-align: right;
+}
+
+.video-js .vjs-track-settings-controls button {
+  margin: 0 0 0 0.6em;
+  padding: 0.5em 1.3em;
+  color: var(--eve-control-color);
+  font: inherit;
+  background: var(--eve-accent, #e00);
+  background-image: none;
+  border: none;
+  border-radius: var(--eve-radius);
+  cursor: pointer;
+  transition: background var(--eve-transition), opacity var(--eve-transition);
+}
+
+.video-js .vjs-track-settings-controls button:hover {
+  color: var(--eve-control-color);
+  opacity: 0.85;
+}
+
+.video-js .vjs-track-settings-controls button:focus,
+.video-js .vjs-track-settings-controls button:focus-visible,
+.video-js .vjs-track-settings-controls button:active {
+  outline: 2px solid var(--eve-accent, #e00);
+  outline-offset: 2px;
+  background-image: none;
+}
+
+.video-js .vjs-track-settings-controls .vjs-default-button {
+  margin-bottom: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.video-js .vjs-track-settings-controls .vjs-default-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}
+
+/* ============================================================
+   Picture-in-Picture button
+   ============================================================ */
+.vjsp-pip-button .vjs-icon-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Inherit accent color when PiP is active */
+.vjsp-pip-button.vjsp-pip-is-active .vjs-icon-placeholder svg {
+  color: var(--eve-accent, #e00);
+}
+
+/* ============================================================
+   Bookmarks
+   ============================================================ */
+/* `.video-js button` (video.js's own base reset) has specificity (0,1,1) —
+   higher than a bare `.vjsp-bookmark-marker` class (0,1,0) — and resets
+   `background`/`transition` to `none`, so this must be qualified with
+   `.video-js` (specificity (0,2,0)) to actually win. */
+.video-js .vjsp-bookmark-marker {
+  position:   absolute;
+  top:        0;
+  width:      3px;
+  height:     100%;
+  /* TODO: same accent color as .vjs-play-progress makes markers blend into
+     the played portion of the bar — black for now until there's a distinct
+     token for this. */
+  background: black;
+  cursor:     pointer;
+  transform:  translateX(-50%);
+  border:     none;
+  padding:    0;
+  border-radius: 1px;
+  transition: transform var(--eve-transition);
+}
+
+.vjsp-bookmark-marker:hover {
+  transform: translateX(-50%) scaleX(1.8);
+}
+
+.vjsp-bookmark-tooltip {
+  display:        none;
+  position:       absolute;
+  bottom:         calc(100% + 8px);
+  left:           50%;
+  transform:      translateX(-50%);
+  background:     var(--eve-control-bg);
+  color:          var(--eve-control-color);
+  font-size:      12px;
+  padding:        4px 8px;
+  border-radius:  var(--eve-radius);
+  white-space:    nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.vjsp-bookmark-marker:hover .vjsp-bookmark-tooltip { display: block; }
+
+/* ============================================================
+   Thumbnail-tile hover preview (DASH-IF thumbnail_tile convention)
+   ============================================================ */
+.vjsp-thumbnail-preview {
+  display:         none;
+  position:        absolute;
+  bottom:          calc(100% + 8px);
+  background-repeat: no-repeat;
+  border-radius:   var(--eve-radius);
+  box-shadow:      0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.15);
+  pointer-events:  none;
+  z-index:         2;
+}
+
+.vjsp-thumbnail-preview--visible { display: block; }
+
+/* ============================================================
+   Picture-in-Picture floating overlay
+   ============================================================ */
+.vjsp-pip-active {
+  position:      fixed !important;
+  bottom:        24px;
+  right:         24px;
+  width:         var(--eve-pip-width) !important;
+  aspect-ratio:  16 / 9;
+  z-index:       9000;
+  border-radius: var(--eve-pip-radius);
+  overflow:      hidden;
+  box-shadow:    var(--eve-pip-shadow);
+  cursor:        grab;
+  /* Smooth entry */
+  animation:     vjsp-pip-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vjsp-pip-in {
+  from { opacity: 0; transform: scale(0.88) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* While dragging */
+.vjsp-pip-active.vjsp-pip-dragging {
+  cursor:     grabbing;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.14);
+  user-select: none;
+}
+
+/* Hide the widescreen aspect-ratio override when PiP is active
+   (the fixed width + aspect-ratio on .vjsp-pip-active take over) */
+.vjsp-pip-active.vjsp-widescreen {
+  aspect-ratio: 16 / 9;
+}
+
+/* Restore button — shown top-right of the floating window */
+.vjsp-pip-restore {
+  position:        absolute;
+  top:             8px;
+  right:           8px;
+  z-index:         9001;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           28px;
+  height:          28px;
+  background:      rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border:          none;
+  border-radius:   50%;
+  color:           #fff;
+  cursor:          pointer;
+  opacity:         0;
+  transition:      opacity var(--eve-transition), background var(--eve-transition);
+}
+
+.vjsp-pip-active:hover .vjsp-pip-restore {
+  opacity: 1;
+}
+
+.vjsp-pip-restore:hover {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+/* In-flow placeholder that holds the player's original space while PiP is
+   active. Sized inline (px) from the player's dimensions at activation. */
+.vjsp-pip-placeholder {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  box-sizing:      border-box;
+  max-width:       100%;
+  padding:         16px;
+  background:      #000;
+  border-radius:   var(--eve-radius);
+}
+
+.vjsp-pip-placeholder-text {
+  max-width:      32ch;
+  color:          rgba(255, 255, 255, 0.82);
+  font-family:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+                  sans-serif;
+  font-size:      clamp(0.8125rem, 2.4vw, 0.9375rem);
+  font-weight:    600;
+  line-height:    1.45;
+  letter-spacing: 0.01em;
+  text-align:     center;
+  text-wrap:      balance;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

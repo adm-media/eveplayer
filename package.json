@@ -1,0 +1,84 @@
+{
+  "name": "@admmedia/eveplayer",
+  "version": "1.0.0",
+  "description": "Production-grade, framework-agnostic TypeScript player library based on Video.js",
+  "type": "module",
+  "author": "ADM Media Consulting SA",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adm-media/eveplayer.git"
+  },
+  "homepage": "https://github.com/adm-media/eveplayer#readme",
+  "bugs": {
+    "url": "https://github.com/adm-media/eveplayer/issues"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup && postcss src/style.css -o dist/style.css --config config",
+    "build:watch": "tsup --watch",
+    "prepublishOnly": "yarn build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "videojs-contrib-eme": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "videojs-contrib-eme": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/video.js": "^7.3.58",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@videojs/http-streaming": "^3.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@xmldom/xmldom": "^0.8.15",
+    "eslint": "^8.0.0",
+    "jsdom": "^24.0.0",
+    "postcss-cli": "^11.0.0",
+    "postcss-import": "^16.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "video.js": "^8.0.0",
+    "vitest": "^4.1.11"
+  },
+  "keywords": [
+    "video",
+    "player",
+    "videojs",
+    "hls",
+    "dash",
+    "cmaf",
+    "media"
+  ]
+}

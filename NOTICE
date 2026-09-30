@@ -1,0 +1,18 @@
+eveplayer
+Copyright 2026 ADM Media Consulting SA
+
+This product includes software developed by ADM Media Consulting SA.
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file
+for the full license text.
+
+This product bundles the following third-party software into its
+distributed build (dist/), each under its own license:
+
+  Video.js (https://videojs.com/)              Apache License 2.0
+  @videojs/http-streaming                      Apache License 2.0
+  @xmldom/xmldom                               MIT License
+
+Their copyright and license notices are preserved inside the bundled
+files. The source of those projects is not part of this repository; it is
+installed as a dependency at build time.

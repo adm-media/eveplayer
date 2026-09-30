@@ -1,0 +1,136 @@
+name: Release
+
+# One way in: Actions -> Release -> Run workflow, with `version` set to patch,
+# minor, major or an exact number (or `gh workflow run release.yml -f
+# version=patch`). The run works out the version, publishes to npm, and only
+# then pushes the tag and opens the GitHub Release, so a failed publish never
+# leaves a tag behind for a version that does not exist.
+#
+# The version lives in the tags and on npm. package.json is set during the run
+# and never committed back, so main is not touched by a release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "patch | minor | major | prerelease | an exact version like 1.2.3"
+        required: true
+        default: patch
+
+permissions:
+  # Pushing the tag and creating the GitHub Release.
+  contents: write
+  # npm trusted publishing: the job authenticates to npm with a short-lived
+  # OIDC token instead of a stored secret.
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Releasing from a feature branch would publish work that is not on the
+      # default branch, under a tag nobody can find.
+      - name: Refuse to release from anywhere but the default branch
+        if: github.ref_name != github.event.repository.default_branch
+        run: |
+          echo "Run this from ${{ github.event.repository.default_branch }}, not ${{ github.ref_name }}."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          scope: "@admmedia"
+
+      # Trusted publishing needs npm 11.5.1 or later; Node 22 ships npm 10.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Test + coverage gate
+        run: yarn coverage
+
+      - name: Resolve the version
+        id: version
+        env:
+          # Through an env var, not straight into the script: the input is
+          # whatever the person typed.
+          VERSION: ${{ inputs.version }}
+        run: |
+          case "$VERSION" in
+            patch|minor|major|prepatch|preminor|premajor|prerelease) ;;
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Not a version or a bump keyword: $VERSION"; exit 1 ;;
+          esac
+          # Bumps from the latest release tag, since package.json on main is
+          # never updated by a release.
+          LATEST="$(git ls-remote --tags --refs origin 'v*.*.*' | sed 's#.*refs/tags/v##' | sort -V | tail -n1)"
+          if [ -n "$LATEST" ]; then
+            npm version "$LATEST" --no-git-tag-version --allow-same-version >/dev/null
+          fi
+          npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
+          NEW="$(node -p "require('./package.json').version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$NEW" >/dev/null; then
+            echo "Tag v$NEW already exists. Pick another version."
+            exit 1
+          fi
+          echo "Releasing $NEW (latest tag: ${LATEST:-none})"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: yarn build
+
+      - name: Pack tarball
+        run: npm pack
+
+      # Authenticated through trusted publishing (OIDC), so no NPM_TOKEN.
+      # --provenance links the published package to this run and commit;
+      # npm generates it because this repository is public.
+      - name: Publish to npm
+        run: npm publish --access public --provenance
+
+      - name: Push the tag
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            *.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # jsDelivr caches what a range such as @1 resolves to for hours, so a
+      # page on `@1` would keep getting the previous release. Purging makes
+      # `@<major>` and `@latest` serve this one right away. Best effort: the
+      # release is already out, so a failure here does not fail the run.
+      - name: Purge the jsDelivr cache
+        continue-on-error: true
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          FILES="$(npm pack --dry-run --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>Object.values(JSON.parse(s))[0].files.forEach((f)=>f.path.startsWith("dist/")&&console.log(f.path)))')"
+          for RANGE in "${VERSION%%.*}" latest; do
+            for FILE in "" $FILES; do
+              URL="https://purge.jsdelivr.net/npm/$NAME@$RANGE${FILE:+/$FILE}"
+              curl -fsS -o /dev/null "$URL" && echo "purged $URL" || echo "::warning::could not purge $URL"
+            done
+          done

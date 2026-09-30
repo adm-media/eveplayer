@@ -1,0 +1,117 @@
+# Closes pull requests from outside contributors that are not linked to an
+# issue a maintainer has accepted. See "Issue first, then pull request" in
+# CONTRIBUTING.md.
+#
+# Runs on pull_request_target so it can comment on and close pull requests
+# opened from forks. It never checks out or runs the pull request's code: it
+# only reads metadata through the API, which is what makes that trigger safe.
+
+name: PR issue gate
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited]
+
+permissions:
+  pull-requests: write
+  issues: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a linked, accepted issue
+        uses: actions/github-script@v7
+        env:
+          ACCEPTED_LABEL: accepted
+          BYPASS_LABEL: skip-issue-check
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { ACCEPTED_LABEL, BYPASS_LABEL } = process.env;
+
+            if (pr.state !== 'open') return;
+
+            // Maintainers and the dependency bot are not gated.
+            if (['OWNER', 'MEMBER', 'COLLABORATOR'].includes(pr.author_association)) {
+              core.info(`Skipped: author is ${pr.author_association}.`);
+              return;
+            }
+            if (pr.user.login === 'dependabot[bot]') {
+              core.info('Skipped: Dependabot.');
+              return;
+            }
+
+            // A maintainer can let a pull request through by adding this label
+            // and reopening it.
+            if (pr.labels.some((label) => label.name === BYPASS_LABEL)) {
+              core.info(`Skipped: "${BYPASS_LABEL}" label.`);
+              return;
+            }
+
+            // closingIssuesReferences covers both closing keywords in the body
+            // ("Closes #12") and issues linked from the pull request sidebar.
+            const { repository } = await github.graphql(
+              `query ($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 10) {
+                      nodes {
+                        number
+                        state
+                        repository { nameWithOwner }
+                        labels(first: 20) { nodes { name } }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { owner: context.repo.owner, repo: context.repo.repo, number: pr.number }
+            );
+
+            const thisRepo = `${context.repo.owner}/${context.repo.repo}`;
+            const linked = repository.pullRequest.closingIssuesReferences.nodes.filter(
+              (issue) => issue.repository.nameWithOwner === thisRepo
+            );
+            const accepted = linked.find(
+              (issue) =>
+                issue.state === 'OPEN' &&
+                issue.labels.nodes.some((label) => label.name === ACCEPTED_LABEL)
+            );
+
+            if (accepted) {
+              core.info(`Linked to accepted issue #${accepted.number}.`);
+              return;
+            }
+
+            const reason =
+              linked.length === 0
+                ? 'it is not linked to an issue'
+                : `the linked issue (${linked.map((issue) => `#${issue.number}`).join(', ')}) ` +
+                  `is not open with the \`${ACCEPTED_LABEL}\` label`;
+
+            const contributing = `${context.payload.repository.html_url}/blob/main/CONTRIBUTING.md`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                `Thanks for the pull request! It has been closed automatically because ${reason}.`,
+                '',
+                'This project asks for an issue first: describe the bug or the use case, and a ' +
+                  `maintainer marks it \`${ACCEPTED_LABEL}\` once the approach is agreed. ` +
+                  'Then open a new pull request that links it in the description (`Closes #123`).',
+                '',
+                `The details are in [CONTRIBUTING.md](${contributing}).`,
+              ].join('\n'),
+            });
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              state: 'closed',
+            });
+
+            core.notice(`Closed #${pr.number}: ${reason}.`);
