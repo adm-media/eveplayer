@@ -556,3 +556,7 @@ callback props, and re-exports all public types from this package.
 ## License
 
 [Apache-2.0](./LICENSE) © ADM Media Consulting SA
+
+The package bundles Video.js, `@videojs/http-streaming` and a few smaller
+libraries, under Apache-2.0 and MIT. See [NOTICE](./NOTICE); the full
+copyright notices and license texts ship in `dist/THIRD_PARTY_NOTICES.txt`.

@@ -24,7 +24,8 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./style.css": "./dist/style.css"
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -38,7 +39,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsup && postcss src/style.css -o dist/style.css --config config",
+    "build": "tsup && postcss src/style.css -o dist/style.css --config config && node scripts/third-party-notices.mjs",
     "build:watch": "tsup --watch",
     "prepublishOnly": "yarn build",
     "test": "vitest run",

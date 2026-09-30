@@ -6,13 +6,18 @@ This product includes software developed by ADM Media Consulting SA.
 Licensed under the Apache License, Version 2.0. See the LICENSE file
 for the full license text.
 
-This product bundles the following third-party software into its
-distributed build (dist/), each under its own license:
+This product bundles third-party software into its distributed build
+(dist/), each under its own license:
 
-  Video.js (https://videojs.com/)              Apache License 2.0
-  @videojs/http-streaming                      Apache License 2.0
-  @xmldom/xmldom                               MIT License
+  Video.js, its VideoJS icon font and vtt.js     Apache License 2.0
+  @videojs/http-streaming, with mux.js,          Apache License 2.0
+    m3u8-parser, mpd-parser, aes-decrypter
+    and pkcs7
+  @xmldom/xmldom, @videojs/xhr,                  MIT License
+    @videojs/vhs-utils, @babel/runtime,
+    global and is-function
 
-Their copyright and license notices are preserved inside the bundled
-files. The source of those projects is not part of this repository; it is
-installed as a dependency at build time.
+The copyright notice and full license text of each of them are in
+dist/THIRD_PARTY_NOTICES.txt, which is generated at build time from the
+packages actually bundled. The source of those projects is not part of
+this repository; it is installed as a dependency at build time.

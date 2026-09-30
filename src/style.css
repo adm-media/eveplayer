@@ -1,6 +1,10 @@
 /*
  * Copyright 2026 ADM Media Consulting SA
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The built stylesheet also includes video-js.css from Video.js
+ * (Copyright Video.js contributors, Apache-2.0) and its embedded VideoJS icon
+ * font (videojs-font, Apache-2.0). See THIRD_PARTY_NOTICES.txt.
  */
 @import 'video.js/dist/video-js.css';
 
