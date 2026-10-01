@@ -93,7 +93,7 @@ player.dispose();
 | `autoplay`       | `boolean` | `false` | Start playback automatically                             |
 | `muted`          | `boolean` | `false` | Start muted. Initial state only: once unmuted (by the viewer or by `player.muted = false`) the player never re-mutes itself, source swaps included |
 | `loop`           | `boolean` | `false` | Loop playback                                            |
-| `widescreen`     | `boolean` | `false` | Applies `aspect-ratio: 16/9; width: 100%` to container  |
+| `widescreen`     | `boolean` | `false` | Fixed 16:9 frame on the container, filled by the player: other aspect ratios are letterboxed inside it, the box never resizes with the media. See "Sizing" below |
 | `hideControls`   | `boolean` | `false` | Hide the Video.js control bar                            |
 | `hidePlayButton` | `boolean` | `false` | Hides the big play button overlay; poster stays visible  |
 | `background`     | `boolean` | `false` | Decorative "background video" mode for use behind other UI. Implies `hideControls`; also defaults `autoplay`/`muted`/`loop` to `true` (only where not explicitly set), hides the loading spinner and error overlay, disables the native right-click context menu, and marks the container `aria-hidden` |
@@ -108,10 +108,20 @@ player.dispose();
 | `showProgressDot`| `boolean` | `false` | Show the scrubber dot at the head of the played portion of the progress bar |
 | `showVolumeDot`  | `boolean` | `false` | Show the handle dot at the head of the filled portion of the volume bar |
 | `thumbnails`     | `boolean` | `true`  | Show a thumbnail-preview popup on progress-bar hover (DASH sources with a thumbnail-tile track) |
-| `fluid`          | `boolean` | `true`  | Enable Video.js fluid mode (responsive sizing)           |
+| `fluid`          | `boolean` | `true`  | Full container width, height from the media's aspect ratio (16:9 until known). `false` lays the player out at the media's intrinsic size and leaves sizing to your CSS. Overridden by `widescreen`. See "Sizing" below |
 | `language`       | `string`  | —       | BCP-47 language code for UI labels                       |
 | `minBandwidth`   | `number`  | —       | Floor, in bits/s, for the estimate the Auto selector uses |
 | `maxBandwidth`   | `number`  | —       | Ceiling, in bits/s, for the same estimate                 |
+
+#### Sizing
+
+The player's box is decided by `widescreen` and `fluid`:
+
+| Options | Box | Use it for |
+|---------|-----|------------|
+| default (`fluid: true`) | Container width, height from the media's aspect ratio (16:9 until known) | Most pages: the box follows the video |
+| `widescreen: true` | Fixed 16:9 frame; other ratios letterboxed in black inside | Space reserved before the media loads (SSR placeholder), equal tiles in a grid or carousel. Override the container's `aspect-ratio` or `height` for another frame, add `video { object-fit: cover }` to crop instead of letterboxing |
+| `fluid: false` | Media's intrinsic pixel size | Boxes sized entirely by your CSS: add `.my-player .video-js { width: 100%; height: 100% }` |
 
 To ship UI strings for a locale Video.js doesn't already have, register a
 dictionary before creating the player and then pass the same code as

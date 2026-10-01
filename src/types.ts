@@ -93,7 +93,14 @@ export interface PlayerOptions {
   /** Loop playback when it reaches the end. Default: false. */
   loop?: boolean;
   /**
-   * Apply `aspect-ratio: 16 / 9; width: 100%` to the container element.
+   * Give the container a fixed 16:9 frame (`aspect-ratio: 16 / 9; width: 100%`,
+   * via the `vjsp-widescreen` class) and make the player fill it. A video of any
+   * other aspect ratio is letterboxed or pillarboxed in black inside the frame,
+   * so the box never changes size with the media. Useful when the space must be
+   * known before the media loads (a server-rendered placeholder carrying the
+   * same class, a grid or carousel of equal tiles). To use a different frame,
+   * keep this option and override the container's `aspect-ratio` or `height`
+   * in your own CSS. Audio-only sources collapse the frame to the control bar.
    * Default: false.
    */
   widescreen?: boolean;
@@ -162,7 +169,15 @@ export interface PlayerOptions {
    *  thumbnail-tile track: DASH (dashif.org "thumbnail_tile" convention) or HLS
    *  (`EXT-X-IMAGE-STREAM-INF`/`EXT-X-TILES`). Default: true. */
   thumbnails?: boolean;
-  /** Enable Video.js fluid mode (the player resizes to its container's width). Default: true. */
+  /**
+   * Video.js fluid mode: the player takes the container's full width and
+   * derives its height from the media's aspect ratio (16:9 until the media's
+   * dimensions are known), so the box follows the video. With `false`, the
+   * player is laid out at the media's intrinsic pixel size, and sizing it is up
+   * to your CSS (e.g. `.my-player .video-js { width: 100%; height: 100%; }`).
+   * Ignored for the box size when `widescreen` is set, since the 16:9 frame
+   * wins. Default: true.
+   */
   fluid?: boolean;
   /** BCP-47 language code for the player's built-in UI labels (e.g. `it`, `fr`). */
   language?: string;

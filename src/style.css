@@ -32,6 +32,24 @@
    ============================================================ */
 .vjsp-widescreen { aspect-ratio: 16 / 9; width: 100%; }
 
+/* With `widescreen` the container is the one size authority: a fixed 16:9
+   box. Video.js's root (the container's direct child) must fill it instead of
+   sizing itself, otherwise a non-16:9 video breaks the box: in `fluid` mode
+   Video.js sets a padding-top from the media's aspect ratio (an empty band
+   below a 2.39:1 film), without `fluid` it takes the media's intrinsic pixel
+   size (overflow). The picture then letterboxes or pillarboxes in black inside
+   the 16:9 frame. The doubled `.video-js` outranks the per-player rule Video.js
+   injects (`.vjs_video_N-dimensions.vjs-fluid:not(.vjs-audio-only-mode)`). */
+.vjsp-widescreen > .video-js.video-js:not(.vjs-audio-only-mode) {
+  width: 100%;
+  height: 100%;
+  padding-top: 0;
+}
+
+/* An audio-only source collapses Video.js to its control bar: let the
+   container shrink with it instead of keeping an empty 16:9 box. */
+.vjsp-widescreen:has(> .video-js.vjs-audio-only-mode) { aspect-ratio: auto; }
+
 .vjsp-hide-play .vjs-big-play-button { display: none; }
 
 .vjsp-hidden { visibility: hidden; }
