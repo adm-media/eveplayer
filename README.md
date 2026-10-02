@@ -563,6 +563,10 @@ callback props, and re-exports all public types from this package.
 
 ---
 
+## Changelog
+
+What changed in each release is in [CHANGELOG.md](./CHANGELOG.md).
+
 ## License
 
 [Apache-2.0](./LICENSE) © ADM Media Consulting SA
