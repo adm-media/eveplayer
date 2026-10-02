@@ -193,6 +193,10 @@ class MockSubsCapsButtonBase {
 }
 
 vi.mock('video.js', () => {
+  // Global dictionaries registered through videojs.addLanguage(), keyed by
+  // lower-cased code as Video.js does.
+  const globalLanguages: Record<string, Record<string, string>> = {};
+
   // Use a closure reference so vi.fn() implementations can read/write state
   // without `this` binding (which breaks Vitest's spy tracking).
   const videojs = vi.fn((_el: unknown, _opts: unknown) => {
@@ -205,6 +209,9 @@ vi.mock('video.js', () => {
     // Build the state bag first so closures below can reference it
     const state = {
       _handlers: {} as Record<string, ((...args: unknown[]) => void)[]>,
+      // Every event passed to trigger(), in order, including the ones fired
+      // before EvePlayer attached a listener.
+      _triggered: [] as string[],
       _audioTracks: audioTracks,
       _textTracks: textTracks,
       _currentTime: 0,
@@ -221,6 +228,8 @@ vi.mock('video.js', () => {
       // through `player.options(obj)`; the muted-persistence code writes here.
       _options: { muted: false } as Record<string, unknown>,
       _src: null as unknown,
+      // Video.js lower-cases the language; jsdom's navigator says `en-US`.
+      _language: String((_opts as { language?: string }).language ?? 'en-US').toLowerCase(),
       _disposed: false,
       _audioOnlyMode: false,
       _controlBar: {
@@ -323,8 +332,39 @@ vi.mock('video.js', () => {
       liveTracker: null as unknown,
 
       trigger(event: string, data?: unknown) {
+        state._triggered.push(event);
         const handlers = state._handlers[event] ?? [];
         for (const h of handlers) h(data);
+      },
+
+      // Video.js's Player#language: lower-cases, fires `languagechange` on a change.
+      language(code?: string) {
+        if (code === undefined) return state._language;
+        if (state._language !== code.toLowerCase()) {
+          state._language = code.toLowerCase();
+          this.trigger('languagechange');
+        }
+        return state._language;
+      },
+      languages() {
+        return { ...globalLanguages };
+      },
+      // Video.js's Component#localize, verbatim in behaviour: active language,
+      // then its base language, then the key; `{n}` replaced from `tokens`.
+      localize(string: string, tokens?: string[], defaultValue = string) {
+        const code: string = this.language();
+        const languages: Record<string, Record<string, string>> = this.languages();
+        const language = languages[code];
+        const primaryLang = languages[code.split('-')[0]];
+        let localized = defaultValue;
+        if (language?.[string]) localized = language[string];
+        else if (primaryLang?.[string]) localized = primaryLang[string];
+        if (tokens) {
+          localized = localized.replace(/\{(\d+)\}/g, (match, index: string) =>
+            tokens[Number(index) - 1] ?? match
+          );
+        }
+        return localized;
       },
     };
 
@@ -343,6 +383,11 @@ vi.mock('video.js', () => {
   (videojs as any).__registered = {} as Record<string, unknown>;
   (videojs as any).registerComponent = vi.fn((name: string, cls: unknown) => {
     (videojs as any).__registered[name] = cls;
+  });
+  (videojs as any).__languages = globalLanguages;
+  (videojs as any).addLanguage = vi.fn((code: string, dictionary: Record<string, string>) => {
+    const key = code.toLowerCase();
+    globalLanguages[key] = { ...globalLanguages[key], ...dictionary };
   });
   // Present so ensureVhsBandwidthVarianceTuned() runs its tuning branch.
   (videojs as any).Vhs = { BANDWIDTH_VARIANCE: 1.2 };
@@ -2558,7 +2603,7 @@ Thumbnail_000000001.jpg
       const btn = new PipButton(fakePlayer, {});
 
       expect(btn.addClass).toHaveBeenCalledWith('vjsp-pip-button');
-      expect(btn.controlText).toHaveBeenCalledWith('Picture in Picture');
+      expect(btn.controlText).toHaveBeenCalledWith('Picture-in-Picture');
       expect((btn.el() as HTMLElement).querySelector('.vjs-icon-placeholder')!.innerHTML).toContain(
         '<svg'
       );
@@ -3253,5 +3298,165 @@ describe('EvePlayer.version', () => {
   it('falls back to the dev marker outside a tsup build', () => {
     // `__EVE_VERSION__` is only defined by tsup's `define`; vitest has none.
     expect(EvePlayer.version).toBe('0.0.0-dev');
+  });
+});
+
+describe('labels and translations', () => {
+  let container: HTMLDivElement;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const menuOf = (p: EvePlayer): HTMLElement => (p as any)._settingsMenu as HTMLElement;
+  const openMenu = () => mockInstance.trigger('vjsp:settings-menu-toggle');
+  const menuTitle = (p: EvePlayer) =>
+    menuOf(p).querySelector('.vjsp-settings-menu__title')!.textContent;
+  const rowLabels = (p: EvePlayer) =>
+    [...menuOf(p).querySelectorAll('.vjsp-settings-row__label')].map((e) => e.textContent);
+
+  beforeEach(() => {
+    container = makeContainer();
+  });
+
+  afterEach(async () => {
+    container.remove();
+    // Dictionaries are global, like Video.js's: start every test without any.
+    const videojs = (await import('video.js')).default as unknown as {
+      __languages: Record<string, unknown>;
+    };
+    for (const code of Object.keys(videojs.__languages)) delete videojs.__languages[code];
+    vi.clearAllMocks();
+  });
+
+  it('shows English labels when no dictionary is registered', () => {
+    const player = new EvePlayer(container);
+    openMenu();
+    expect(menuTitle(player)).toBe('Settings');
+    expect(rowLabels(player)).toEqual(['Playback speed']);
+    player.requestPip();
+    expect(container.querySelector('.vjsp-pip-restore')!.getAttribute('aria-label')).toBe(
+      'Restore player'
+    );
+    expect(container.previousElementSibling?.textContent).toBe(
+      'Video is playing in picture-in-picture'
+    );
+    player.dispose();
+  });
+
+  it('translates its own labels with a dictionary registered through addLanguage', () => {
+    EvePlayer.addLanguage('it', { Settings: 'Impostazioni', 'Playback speed': 'Velocità' });
+    const player = new EvePlayer(container, { language: 'it' });
+    openMenu();
+    expect(menuTitle(player)).toBe('Impostazioni');
+    expect(rowLabels(player)).toEqual(['Velocità']);
+    player.dispose();
+  });
+
+  it('falls back from a regional language to its base language, then to English', () => {
+    EvePlayer.addLanguage('it', { Settings: 'Impostazioni' });
+    const player = new EvePlayer(container, { language: 'it-CH' });
+    openMenu();
+    expect(menuTitle(player)).toBe('Impostazioni');
+    // Not in the dictionary: stays English.
+    expect(rowLabels(player)).toEqual(['Playback speed']);
+    player.dispose();
+  });
+
+  it('fills {1} placeholders in a translated label', () => {
+    EvePlayer.addLanguage('it', { 'Automatic ({1})': 'Automatica ({1})' });
+    const player = new EvePlayer(container, { language: 'it' });
+    // The mock reports a 1080-pixel-tall picture.
+    expect((player as unknown as { _settingsQualityValue(): string })._settingsQualityValue()).toBe(
+      'Automatica (1080p)'
+    );
+    player.dispose();
+  });
+
+  it('lets the labels option win over the active dictionary', () => {
+    EvePlayer.addLanguage('it', { Settings: 'Impostazioni', 'Playback speed': 'Velocità' });
+    const player = new EvePlayer(container, { language: 'it', labels: { Settings: 'Opzioni' } });
+    openMenu();
+    expect(menuTitle(player)).toBe('Opzioni');
+    // Keys the override leaves out still come from the dictionary.
+    expect(rowLabels(player)).toEqual(['Velocità']);
+    player.dispose();
+  });
+
+  it('applies the labels option to the labels Video.js renders itself', () => {
+    const player = new EvePlayer(container, { labels: { Play: 'Start' } });
+    expect(mockInstance.localize('Play')).toBe('Start');
+    expect(mockInstance.localize('Pause')).toBe('Pause');
+    player.dispose();
+  });
+
+  it('asks Video.js to re-render its labels only when the option sets any', () => {
+    const plain = new EvePlayer(container);
+    expect(mockInstance._triggered).not.toContain('languagechange');
+    plain.dispose();
+
+    const other = makeContainer();
+    const labelled = new EvePlayer(other, { labels: { Play: 'Start' } });
+    expect(mockInstance._triggered).toContain('languagechange');
+    labelled.dispose();
+    other.remove();
+  });
+
+  it('keeps one player\'s labels away from the other players', () => {
+    const a = new EvePlayer(container, { labels: { Play: 'Start' } });
+    const aInstance = mockInstance;
+    const other = makeContainer();
+    const b = new EvePlayer(other);
+    expect(aInstance.localize('Play')).toBe('Start');
+    expect(mockInstance.localize('Play')).toBe('Play');
+    a.dispose();
+    b.dispose();
+    other.remove();
+  });
+
+  it('setLabels() replaces the overrides and re-renders an open menu', () => {
+    const player = new EvePlayer(container, { labels: { Settings: 'Opzioni' } });
+    openMenu();
+    expect(menuTitle(player)).toBe('Opzioni');
+
+    player.setLabels({ 'Playback speed': 'Velocità' });
+    expect(menuTitle(player)).toBe('Settings');
+    expect(rowLabels(player)).toEqual(['Velocità']);
+
+    player.setLabels({});
+    expect(rowLabels(player)).toEqual(['Playback speed']);
+    player.dispose();
+  });
+
+  it('setLabels() relabels the PiP restore button and placeholder while PiP is on', () => {
+    const player = new EvePlayer(container);
+    player.requestPip();
+    player.setLabels({
+      'Restore player': 'Ripristina il player',
+      Restore: 'Ripristina',
+      'Video is playing in picture-in-picture': 'In picture-in-picture',
+    });
+    const restore = container.querySelector<HTMLButtonElement>('.vjsp-pip-restore')!;
+    expect(restore.getAttribute('aria-label')).toBe('Ripristina il player');
+    expect(restore.title).toBe('Ripristina');
+    expect(container.previousElementSibling?.textContent).toBe('In picture-in-picture');
+    player.dispose();
+  });
+
+  it('keeps an explicit pipPlaceholderText over any translation', () => {
+    const player = new EvePlayer(container, {
+      pipPlaceholderText: 'Popped out',
+      labels: { 'Video is playing in picture-in-picture': 'In picture-in-picture' },
+    });
+    player.requestPip();
+    expect(container.previousElementSibling?.textContent).toBe('Popped out');
+    player.setLabels({ 'Video is playing in picture-in-picture': 'Altro' });
+    expect(container.previousElementSibling?.textContent).toBe('Popped out');
+    player.dispose();
+  });
+
+  it('renders labels as text, never as HTML', () => {
+    const player = new EvePlayer(container, { labels: { Settings: '<img src=x onerror=alert(1)>' } });
+    openMenu();
+    expect(menuOf(player).querySelector('img')).toBeNull();
+    expect(menuTitle(player)).toBe('<img src=x onerror=alert(1)>');
+    player.dispose();
   });
 });

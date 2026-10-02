@@ -118,7 +118,7 @@ function ensurePipButtonRegistered(): void {
     constructor(...args: ConstructorParameters<typeof Button>) {
       super(...args);
       this.addClass('vjsp-pip-button');
-      this.controlText('Picture in Picture');
+      this.controlText('Picture-in-Picture');
 
       // Inject SVG icon into the placeholder span
       const placeholder = this.el().querySelector<HTMLElement>('.vjs-icon-placeholder');
@@ -565,7 +565,13 @@ export class EvePlayer {
   // In-flow placeholder that holds the player's original space while PiP is
   // active (the container itself becomes `position: fixed` and leaves the flow).
   private _pipPlaceholder: HTMLElement | null = null;
-  private readonly _pipPlaceholderText: string;
+  // `undefined` unless PlayerOptions.pipPlaceholderText was set: the default
+  // text is then translated when the placeholder is built (see _t).
+  private readonly _pipPlaceholderText: string | undefined;
+
+  // Per-player label overrides (PlayerOptions.labels / setLabels), merged into
+  // what Video.js's own `localize()` sees by _installLabelOverrides.
+  private _labels: LanguageDictionary = {};
 
   // Settings menu (gear) state: quality + playback-speed flyout
   private _settingsMenu: HTMLElement | null = null;
@@ -616,9 +622,19 @@ export class EvePlayer {
     typeof __EVE_VERSION__ !== 'undefined' ? __EVE_VERSION__ : '0.0.0-dev';
 
   /**
-   * Registers a Video.js UI-string dictionary for a locale (control bar labels,
-   * menu items, etc.), then activate it by passing the same `code` as
-   * {@link PlayerOptions.language}.
+   * Registers a UI-string dictionary for a locale (control bar labels, menu
+   * items, etc.), then activate it by passing the same `code` as
+   * {@link PlayerOptions.language} (or leave `language` unset to follow the
+   * browser's language). Ready-made dictionaries covering both the player's
+   * own labels and the Video.js ones ship in the package's `lang/` folder:
+   *
+   * ```ts
+   * import it from '@admmedia/eveplayer/lang/it.json';
+   * EvePlayer.addLanguage('it', it);
+   * ```
+   *
+   * Calling it again for the same `code` merges into the dictionary already
+   * registered.
    *
    * Video.js is bundled privately inside this package (see the package README),
    * so a consumer's own `import videojs from 'video.js'` is a separate module
@@ -642,7 +658,8 @@ export class EvePlayer {
     this.container = container;
     this.emitter = new EventEmitter();
     this._thumbnailsEnabled = options.thumbnails ?? true;
-    this._pipPlaceholderText = options.pipPlaceholderText ?? 'Video is playing in picture-in-picture';
+    this._pipPlaceholderText = options.pipPlaceholderText;
+    this._labels = { ...options.labels };
     this._qualityEnabled = options.quality !== false;
     this._speedEnabled = !options.hideSpeed;
     this._playbackRates =
@@ -756,6 +773,14 @@ export class EvePlayer {
         },
       },
     });
+
+    // Per-player label overrides ride on Video.js's own lookup, so the labels
+    // Video.js renders itself (Play, Mute, …) honour them too, not only ours.
+    // Its components have already rendered their text by now: a
+    // `languagechange` makes them render it again with the overrides.
+    this._installLabelOverrides();
+    if (Object.keys(this._labels).length > 0) this.vjs.trigger('languagechange');
+    this.vjs.on('languagechange', () => this._refreshLabels());
 
     this.vjs.ready(() => {
       const controlBar = this.vjs.getChild('controlBar');
@@ -1160,6 +1185,79 @@ export class EvePlayer {
 
   set playbackRate(value: number) {
     this.vjs.playbackRate(value);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Labels
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Replaces this player's label overrides (see {@link PlayerOptions.labels})
+   * and re-renders every label on screen with them. The new set replaces the
+   * previous one entirely: a key left out goes back to its translation, or to
+   * English. Pass `{}` to drop every override.
+   *
+   * @param labels - Overrides keyed by the English text of each label, e.g.
+   *   `{ 'Settings': 'Options' }`.
+   */
+  setLabels(labels: LanguageDictionary): void {
+    this._labels = { ...labels };
+    this.vjs.trigger('languagechange');
+  }
+
+  /**
+   * Translates one of the player's own labels: the per-player override, else
+   * the dictionary registered for the active language, else the English key
+   * itself. `{1}`, `{2}`… in the result are replaced by `tokens`.
+   */
+  private _t(key: string, ...tokens: string[]): string {
+    return this.vjs.localize(key, tokens.length > 0 ? tokens : undefined);
+  }
+
+  /**
+   * Makes Video.js's `localize()` see this player's overrides. It reads the
+   * player's `languages()` (the global dictionaries merged with per-player
+   * ones) and looks up the active language there, then its base language
+   * (`it-ch` → `it`): wrapping `languages()` on this instance to lay the
+   * overrides over the active language's entry covers every label, ours and
+   * Video.js's, without touching the global dictionaries other players share.
+   */
+  private _installLabelOverrides(): void {
+    // Video.js always resolves a language (the browser's when none is set).
+    const vjs = this.vjs as unknown as {
+      language(): string;
+      languages(): Record<string, LanguageDictionary>;
+    };
+    const base = vjs.languages.bind(vjs);
+    vjs.languages = () => {
+      const all = base();
+      if (Object.keys(this._labels).length === 0) return all;
+      const code = vjs.language();
+      return { ...all, [code]: { ...all[code], ...this._labels } };
+    };
+  }
+
+  /**
+   * Re-renders the labels of the nodes this class builds by hand and keeps on
+   * screen (Video.js components refresh their own on `languagechange`). Nodes
+   * built on demand, like the settings menu panels, pick up the new text the
+   * next time they are built; an open menu is rebuilt now.
+   */
+  private _refreshLabels(): void {
+    this._syncSettingsMenu();
+    if (this._pipRestoreBtn) this._labelPipRestoreButton(this._pipRestoreBtn);
+    const placeholderText = this._pipPlaceholder?.querySelector('.vjsp-pip-placeholder-text');
+    if (placeholderText) placeholderText.textContent = this._pipPlaceholderLabel();
+  }
+
+  /** The PiP placeholder text: the option as given, else the translated default. */
+  private _pipPlaceholderLabel(): string {
+    return this._pipPlaceholderText ?? this._t('Video is playing in picture-in-picture');
+  }
+
+  private _labelPipRestoreButton(btn: HTMLButtonElement): void {
+    btn.setAttribute('aria-label', this._t('Restore player'));
+    btn.title = this._t('Restore');
   }
 
   // ---------------------------------------------------------------------------
@@ -1731,8 +1829,7 @@ export class EvePlayer {
     const btn = document.createElement('button');
     btn.className = 'vjsp-pip-restore';
     btn.setAttribute('type', 'button');
-    btn.setAttribute('aria-label', 'Restore player');
-    btn.title = 'Restore';
+    this._labelPipRestoreButton(btn);
     btn.innerHTML = PIP_RESTORE_ICON_SVG;
     btn.addEventListener('click', () => this.exitPip());
     this.container.appendChild(btn);
@@ -1770,10 +1867,11 @@ export class EvePlayer {
     placeholder.className = 'vjsp-pip-placeholder';
     placeholder.style.width = `${Math.round(rect.width)}px`;
     placeholder.style.height = `${Math.round(rect.height)}px`;
-    if (this._pipPlaceholderText) {
+    const text = this._pipPlaceholderLabel();
+    if (text) {
       const label = document.createElement('span');
       label.className = 'vjsp-pip-placeholder-text';
-      label.textContent = this._pipPlaceholderText;
+      label.textContent = text;
       placeholder.appendChild(label);
     }
 
@@ -2024,15 +2122,15 @@ export class EvePlayer {
 
   /** Value text shown on the root "Quality" row. */
   private _settingsQualityValue(): string {
-    if (!this._isAutoQuality) return this._manualQualityLabel || 'Auto';
+    if (!this._isAutoQuality) return this._manualQualityLabel || this._t('Auto');
     const height = this.vjs.videoHeight() ?? 0;
-    return height > 0 ? `Automatic (${height}p)` : 'Automatic';
+    return height > 0 ? this._t('Automatic ({1})', `${height}p`) : this._t('Automatic');
   }
 
   /** Value text shown on the root "Playback speed" row. */
   private _settingsSpeedValue(): string {
     const rate = this.playbackRate;
-    return rate === 1 ? 'Normal' : `${rate}×`;
+    return rate === 1 ? this._t('Normal') : `${rate}×`;
   }
 
   private _renderSettings(): void {
@@ -2048,11 +2146,11 @@ export class EvePlayer {
     }
 
     if (this._settingsLevel === 'root') {
-      menu.appendChild(this._buildSettingsHeader('Settings', true));
+      menu.appendChild(this._buildSettingsHeader(this._t('Settings'), true));
       const body = this._buildSettingsBody();
       if (this._speedEnabled) {
         body.appendChild(
-          this._buildSettingsRow('Playback speed', this._settingsSpeedValue(), () => {
+          this._buildSettingsRow(this._t('Playback speed'), this._settingsSpeedValue(), () => {
             this._settingsLevel = 'speed';
             this._renderSettings();
           })
@@ -2060,7 +2158,7 @@ export class EvePlayer {
       }
       if (this._hasQualitySection()) {
         body.appendChild(
-          this._buildSettingsRow('Quality', this._settingsQualityValue(), () => {
+          this._buildSettingsRow(this._t('Quality'), this._settingsQualityValue(), () => {
             this._settingsLevel = 'quality';
             this._renderSettings();
           })
@@ -2071,10 +2169,10 @@ export class EvePlayer {
     }
 
     if (this._settingsLevel === 'quality') {
-      menu.appendChild(this._buildSettingsHeader('Quality', false));
+      menu.appendChild(this._buildSettingsHeader(this._t('Quality'), false));
       const body = this._buildSettingsBody();
       body.appendChild(
-        this._buildSettingsOption('Auto', this._isAutoQuality, () => {
+        this._buildSettingsOption(this._t('Auto'), this._isAutoQuality, () => {
           this.setAutoQuality();
           this._settingsLevel = 'root';
           this._renderSettings();
@@ -2097,10 +2195,10 @@ export class EvePlayer {
     }
 
     // speed
-    menu.appendChild(this._buildSettingsHeader('Playback speed', false));
+    menu.appendChild(this._buildSettingsHeader(this._t('Playback speed'), false));
     const body = this._buildSettingsBody();
     for (const rate of this._playbackRates) {
-      const label = rate === 1 ? 'Normal' : `${rate}×`;
+      const label = rate === 1 ? this._t('Normal') : `${rate}×`;
       const active = this.playbackRate === rate;
       body.appendChild(
         this._buildSettingsOption(label, active, () => {
@@ -2126,7 +2224,7 @@ export class EvePlayer {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'vjsp-settings-menu__back';
-    back.setAttribute('aria-label', isRoot ? 'Close settings' : 'Back');
+    back.setAttribute('aria-label', isRoot ? this._t('Close settings') : this._t('Back'));
     back.innerHTML = MENU_BACK_ICON_SVG;
     back.addEventListener('click', () => {
       if (isRoot) {

@@ -13,6 +13,8 @@ By participating in this project you agree to abide by our
 - **Request a feature** — open an issue describing the use case before writing
   code, so we can agree on the public API shape.
 - **Send a pull request** for an issue a maintainer has accepted (see below).
+- **Translate the player's labels** into your language (see
+  [Translations](#translations)).
 
 For anything security-sensitive, please do **not** open a public issue. Use
 GitHub's *"Report a vulnerability"* (private security advisory) on this
@@ -127,6 +129,8 @@ yarn install
 | `src/index.ts` | Public entry point. Only what is exported here is public API. |
 | `src/EventEmitter.ts`, `src/dashThumbnails.ts` | Internal helpers. |
 | `src/__tests__/` | Vitest + jsdom unit tests. |
+| `lang/` | The player's own UI labels: `en.json` (the reference list) and one translation per language. |
+| `scripts/` | Build steps run after `tsup`: third-party notices, and `build-lang.mjs`, which merges `lang/` with the Video.js dictionaries into `dist/lang/`. |
 | `docs/architecture.md`, `docs/adr/` | The "why" behind the non-obvious parts (mainly the ABR subsystem). |
 
 ### Scripts
@@ -152,6 +156,30 @@ Branch off `main`, name it `<type>/<short-kebab-case-description>`:
 
 Keep the description short enough to read in a branch list; it doesn't need to
 restate the PR title.
+
+## Translations
+
+The player's labels are keyed by their English text. `lang/en.json` lists every
+label the player itself shows; the ones it inherits from Video.js ("Play",
+"Mute", …) are translated upstream in
+[Video.js](https://github.com/videojs/video.js/tree/main/lang) and merged in at
+build time, so only the player's own labels belong here.
+
+To add or complete a language:
+
+1. Open an issue titled `Translation: <language>` (the usual
+   [issue-first rule](#issue-first-then-pull-request) applies; a translation is
+   accepted quickly).
+2. Copy `lang/en.json` to `lang/<code>.json`, using the same code as the
+   Video.js file for that language (`de`, `pt-BR`, `zh-CN`, …), and translate
+   the values. Leave the keys exactly as they are.
+3. Keep every `{1}`, `{2}`… placeholder: the player fills them in (in
+   `Automatic ({1})`, `{1}` becomes a quality such as `1080p`).
+4. Run `yarn test`: it checks that your file uses only keys from `en.json` and
+   keeps the placeholders. A key you leave out simply stays in English.
+
+When a change adds a label to the player, add it to `en.json` (and to `it.json`,
+which is kept complete) in the same pull request; the tests fail otherwise.
 
 ## Pull request checklist
 

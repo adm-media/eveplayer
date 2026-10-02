@@ -109,7 +109,8 @@ player.dispose();
 | `showVolumeDot`  | `boolean` | `false` | Show the handle dot at the head of the filled portion of the volume bar |
 | `thumbnails`     | `boolean` | `true`  | Show a thumbnail-preview popup on progress-bar hover (DASH sources with a thumbnail-tile track) |
 | `fluid`          | `boolean` | `true`  | Full container width, height from the media's aspect ratio (16:9 until known). `false` lays the player out at the media's intrinsic size and leaves sizing to your CSS. Overridden by `widescreen`. See "Sizing" below |
-| `language`       | `string`  | —       | BCP-47 language code for UI labels                       |
+| `language`       | `string`  | browser language | BCP-47 language code for UI labels (see [Labels and translations](#labels-and-translations)) |
+| `labels`         | `Record<string, string>` | — | Per-player label overrides keyed by the English text, e.g. `{ Settings: 'Options' }` (see [Labels and translations](#labels-and-translations)) |
 | `minBandwidth`   | `number`  | —       | Floor, in bits/s, for the estimate the Auto selector uses |
 | `maxBandwidth`   | `number`  | —       | Ceiling, in bits/s, for the same estimate                 |
 
@@ -123,20 +124,54 @@ The player's box is decided by `widescreen` and `fluid`:
 | `widescreen: true` | Fixed 16:9 frame; other ratios letterboxed in black inside | Space reserved before the media loads (SSR placeholder), equal tiles in a grid or carousel. Override the container's `aspect-ratio` or `height` for another frame, add `video { object-fit: cover }` to crop instead of letterboxing |
 | `fluid: false` | Media's intrinsic pixel size | Boxes sized entirely by your CSS: add `.my-player .video-js { width: 100%; height: 100% }` |
 
-To ship UI strings for a locale Video.js doesn't already have, register a
-dictionary before creating the player and then pass the same code as
-`language`:
+### Labels and translations
+
+Every label the player shows (control bar tooltips, the settings menu, the PiP
+window, and the ones inherited from Video.js such as "Play" or "Mute") is
+English by default and keyed by its English text.
+
+**Ready-made languages.** The package ships one dictionary per language under
+`lang/`, covering both the player's own labels and the Video.js ones (53
+languages; the player's own labels are translated in `it` so far, and stay
+English elsewhere until someone contributes them, see
+[CONTRIBUTING](./CONTRIBUTING.md#translations)). Register the ones you need
+once, before creating players:
 
 ```ts
-EvePlayer.addLanguage('it', { Play: 'Riproduci', Pause: 'Pausa' /* ... */ });
+import it from '@admmedia/eveplayer/lang/it.json';
+
+EvePlayer.addLanguage('it', it);
+new EvePlayer(container, { language: 'it' }); // or omit `language` to follow the browser
 ```
 
-Video.js is bundled privately inside this package (see "Installation" above)
-— a consumer's own `import videojs from 'video.js'` is a separate module
-instance, so calling `videojs.addLanguage()` on it has no effect on this
-library's players. `EvePlayer.addLanguage()` is the only way to reach the
-copy actually in use, and only needs to be called once (not per player
-instance).
+A regional code falls back to its base language (`it-CH` uses `it`), and any
+label missing from the dictionary stays English. `lang/en.json` lists every key
+the player itself uses; `{1}` in a key (as in `Automatic ({1})`) is filled in by
+the player and must be kept in the translation.
+
+**Your own wording.** `addLanguage()` merges into an existing dictionary, so you
+can also register a partial one. For a single player, whatever the language,
+pass `labels` (or call `setLabels()` later, which replaces the whole set and
+re-renders the labels on screen):
+
+```ts
+const player = new EvePlayer(container, { labels: { Settings: 'Options', Play: 'Start' } });
+player.setLabels({ Settings: 'Preferences' });
+```
+
+Priority, per label: a dedicated option (`pipPlaceholderText`), then `labels`,
+then the active language's dictionary, then English.
+
+| Method | Description |
+|--------|-------------|
+| `EvePlayer.addLanguage(code, dictionary)` (static) | Register (or extend) the dictionary for a language, for every player on the page |
+| `setLabels(labels)` | Replace this player's label overrides and re-render the labels on screen; `{}` drops them all |
+
+Video.js is bundled privately inside this package (see "Installation" above),
+so a consumer's own `import videojs from 'video.js'` is a separate module
+instance and calling `videojs.addLanguage()` on it has no effect on this
+library's players. `EvePlayer.addLanguage()` is the only way to reach the copy
+actually in use, and only needs to be called once (not per player instance).
 
 ### Version
 
