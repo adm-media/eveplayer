@@ -335,7 +335,7 @@ needs no declared bitrate at all.
 ### Thumbnail preview (progress-bar hover)
 
 For **DASH** sources whose manifest carries a
-[DASH-IF `thumbnail_tile`](http://dashif.org/guidelines/thumbnail_tile) image
+[DASH-IF `thumbnail_tile`](https://dashif.org/docs/DASH-IF-IOP-v4.3.pdf#page=170) image
 track, or **HLS** sources whose master playlist carries an
 `EXT-X-IMAGE-STREAM-INF`/`EXT-X-TILES` image trick-play track (e.g. AWS
 MediaConvert's `ImageBasedTrickPlay` on a CMAF/HLS output), hovering the
