@@ -4,6 +4,30 @@ Every notable change to `@admmedia/eveplayer`, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-12
+
+### Added
+
+- Every label the player shows can now be translated: the settings menu
+  ("Quality", "Playback speed", "Normal", "Automatic (1080p)", …) and the PiP
+  window go through the same dictionaries as the labels inherited from
+  Video.js, which they used to bypass.
+- Ready-made dictionaries for 53 languages in `dist/lang/`, importable as
+  `@admmedia/eveplayer/lang/<code>.json` and registered with
+  `EvePlayer.addLanguage()`. Each one merges the Video.js translation with the
+  player's own labels; the player's own are complete in Italian and stay in
+  English elsewhere until translated (CONTRIBUTING explains how to add a
+  language).
+- `labels` option and `setLabels()`, to override single labels on one player
+  whatever its language, including the Video.js ones ("Play", "Mute", …).
+  `setLabels()` updates the labels already on screen.
+- `CHANGELOG.md`, shipped in the package.
+
+### Changed
+
+- The PiP button's tooltip reads "Picture-in-Picture" instead of "Picture in
+  Picture", the text Video.js translates.
+
 ## [1.0.2] - 2026-10-01
 
 ### Fixed
@@ -30,6 +54,7 @@ Every notable change to `@admmedia/eveplayer`, newest first. The format follows
 
 First public release.
 
+[1.1.0]: https://github.com/adm-media/eveplayer/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/adm-media/eveplayer/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/adm-media/eveplayer/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/adm-media/eveplayer/releases/tag/v1.0.0
