@@ -60,6 +60,7 @@
     }
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/video.js": "^7.3.58",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
