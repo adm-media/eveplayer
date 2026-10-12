@@ -129,8 +129,10 @@ export interface PlayerOptions {
    * space while PiP is active (the player itself floats away as the PiP
    * window). The placeholder matches the player's size at the moment PiP is
    * activated, so surrounding page content doesn't jump. Default:
-   * `'Video is playing in picture-in-picture'`. Pass an empty string for a blank
-   * placeholder that still reserves the space.
+   * `'Video is playing in picture-in-picture'`, translated like any other label
+   * (see {@link PlayerOptions.labels}). A value set here is used as is and wins
+   * over any translation. Pass an empty string for a blank placeholder that
+   * still reserves the space.
    */
   pipPlaceholderText?: string;
   /**
@@ -179,8 +181,24 @@ export interface PlayerOptions {
    * wins. Default: true.
    */
   fluid?: boolean;
-  /** BCP-47 language code for the player's built-in UI labels (e.g. `it`, `fr`). */
+  /**
+   * BCP-47 language code for the player's built-in UI labels (e.g. `it`, `fr`).
+   * Default: the browser's preferred language. The labels are translated only
+   * if a dictionary for that language was registered with
+   * {@link EvePlayer.addLanguage}; a regional code (`it-CH`) falls back to its
+   * base language (`it`), and anything still missing stays in English.
+   */
   language?: string;
+  /**
+   * Per-player overrides for UI labels, keyed by the English text of the label
+   * (the same keys as the dictionaries passed to {@link EvePlayer.addLanguage},
+   * listed in the package's `lang/en.json`), e.g. `{ 'Settings': 'Options' }`.
+   * They win over any registered dictionary, whatever the active language, and
+   * apply to every label: the player's own and the ones it inherits from
+   * Video.js (`'Play'`, `'Mute'`, …). Change them later with
+   * {@link EvePlayer.setLabels}.
+   */
+  labels?: LanguageDictionary;
   /**
    * Floor, in bits per second, for the bandwidth estimate the "Auto" quality
    * selector (see `docs/adr/0001`) uses to pick a rendition — never a hard
@@ -432,8 +450,12 @@ export interface PlayerEventMap {
 }
 
 /**
- * A Video.js UI-string dictionary for one locale, e.g. `{ 'Play': 'Riproduci' }`.
- * Passed to {@link EvePlayer.addLanguage}.
+ * A UI-string dictionary for one locale, keyed by the English text of each
+ * label, e.g. `{ 'Play': 'Riproduci' }`. Passed to {@link EvePlayer.addLanguage}
+ * (one locale for every player) or as {@link PlayerOptions.labels} /
+ * {@link EvePlayer.setLabels} (one player, any locale). Ready-made dictionaries
+ * ship in the package's `lang/` folder. A `{1}`, `{2}`… placeholder is replaced
+ * by the value the player fills in (e.g. `'Automatic ({1})'` → `'Automatic (1080p)'`).
  */
 export interface LanguageDictionary {
   [phrase: string]: string;

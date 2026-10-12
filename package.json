@@ -25,6 +25,7 @@
       }
     },
     "./style.css": "./dist/style.css",
+    "./lang/*": "./dist/lang/*",
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
@@ -39,7 +40,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsup && postcss src/style.css -o dist/style.css --config config && node scripts/third-party-notices.mjs",
+    "build": "tsup && postcss src/style.css -o dist/style.css --config config && node scripts/third-party-notices.mjs && node scripts/build-lang.mjs",
     "build:watch": "tsup --watch",
     "prepublishOnly": "yarn build",
     "test": "vitest run",
