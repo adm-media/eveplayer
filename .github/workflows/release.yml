@@ -8,6 +8,10 @@ name: Release
 #
 # The version lives in the tags and on npm. package.json is set during the run
 # and never committed back, so main is not touched by a release.
+#
+# Before running it, describe the release in CHANGELOG.md under
+# `## [<version>] - <date>` and commit that to main: the run stops before
+# publishing when the section for the version it computes is missing.
 
 on:
   workflow_dispatch:
@@ -87,6 +91,12 @@ jobs:
           echo "version=$NEW" >> "$GITHUB_OUTPUT"
           echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
 
+      # Before anything is published: a release must be described in
+      # CHANGELOG.md under exactly the version computed above. The same text
+      # becomes the GitHub Release body below.
+      - name: Check the changelog
+        run: node scripts/release-notes.mjs "${{ steps.version.outputs.version }}" > "$RUNNER_TEMP/release-notes.md"
+
       - name: Build
         run: yarn build
 
@@ -111,7 +121,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.tag }}
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/release-notes.md
           files: |
             *.tgz
         env:

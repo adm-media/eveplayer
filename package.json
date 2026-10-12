@@ -33,7 +33,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "NOTICE"
+    "NOTICE",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "access": "public",

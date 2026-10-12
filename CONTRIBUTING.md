@@ -231,8 +231,12 @@ It does **not** check Prettier formatting — run that locally.
 
 ## Releases
 
-Releases are cut from `main` by a maintainer, by hand: Actions → Release →
-Run workflow, with `version` set to `patch`, `minor`, `major` or an exact
+Releases are cut from `main` by a maintainer, by hand. First, describe the
+release in `CHANGELOG.md`: add a `## [X.Y.Z] - YYYY-MM-DD` section on top, in
+the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style of the
+existing ones (`Added`, `Changed`, `Fixed`, …, written for people who use the
+package), plus its compare link at the bottom, and commit it to `main`. Then:
+Actions → Release → Run workflow, with `version` set to `patch`, `minor`, `major` or an exact
 number (or `gh workflow run release.yml -f version=patch`). The **Release**
 workflow then, in order:
 
@@ -240,13 +244,16 @@ workflow then, in order:
 2. type-checks and runs the coverage gate;
 3. works out the version, bumping from the latest `v*.*.*` tag, and stops if
    that tag already exists;
-4. builds and publishes to npm (public, with provenance);
-5. only then pushes the `vX.Y.Z` tag and opens a GitHub Release;
-6. purges the jsDelivr cache for `@<major>` and `@latest`, so pages loading
+4. stops if `CHANGELOG.md` has no section for that exact version, so nothing
+   is published undescribed (or under a version the changelog doesn't expect);
+5. builds and publishes to npm (public, with provenance);
+6. only then pushes the `vX.Y.Z` tag and opens a GitHub Release, whose text is
+   that version's `CHANGELOG.md` section;
+7. purges the jsDelivr cache for `@<major>` and `@latest`, so pages loading
    the CDN build by range get the new release right away (best effort).
 
 A failed publish therefore never leaves a tag for a version that does not
-exist. Contributors don't need to touch versions: `package.json` is set during
+exist. Contributors don't need to touch versions or `CHANGELOG.md`: `package.json` is set during
 the run and never committed back, so the tags and npm are the record of what
 was released.
 
