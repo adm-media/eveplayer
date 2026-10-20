@@ -1,0 +1,59 @@
+# Weekly version updates. Security updates are enabled in the repository
+# settings and are not affected by the schedule, the groups or the cooldown
+# below.
+#
+# Every dependency is a devDependency, but three of them are inlined into
+# dist/ by tsup (`noExternal` in tsup.config.ts): video.js,
+# @videojs/http-streaming and @xmldom/xmldom. A bump of any of these changes
+# the code that ships, so each one gets a pull request of its own instead of
+# riding along with the tooling group.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Zurich
+    # Change package.json only when the new version falls outside the
+    # current range; in-range updates touch yarn.lock alone.
+    versioning-strategy: increase-if-necessary
+    # Let a release settle for a while before proposing it, so a compromised
+    # or broken version is usually yanked before it reaches a pull request.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    ignore:
+      # Matches the Node version used in CI (22).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # Packages that must move together, at any update type.
+      typescript-eslint:
+        patterns: ["@typescript-eslint/*"]
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
+      # Everything else that does not ship, minor and patch only. Majors
+      # still arrive one pull request each.
+      tooling:
+        update-types: ["minor", "patch"]
+        exclude-patterns:
+          - "video.js"
+          - "@videojs/*"
+          - "@xmldom/xmldom"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Zurich
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
