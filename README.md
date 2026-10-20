@@ -108,7 +108,7 @@ player.dispose();
 | `playbackRates`  | `number[]`| `[0.5, 0.75, 1, 1.25, 1.5, 2]` | Playback-speed steps offered in the settings menu |
 | `showProgressDot`| `boolean` | `false` | Show the scrubber dot at the head of the played portion of the progress bar |
 | `showVolumeDot`  | `boolean` | `false` | Show the handle dot at the head of the filled portion of the volume bar |
-| `thumbnails`     | `boolean` | `true`  | Show a thumbnail-preview popup on progress-bar hover (DASH sources with a thumbnail-tile track) |
+| `thumbnails`     | `boolean` | `true`  | Show a thumbnail-preview popup on progress-bar hover (DASH or HLS sources with a thumbnail-tile track) |
 | `fluid`          | `boolean` | `true`  | Full container width, height from the media's aspect ratio (16:9 until known). `false` lays the player out at the media's intrinsic size and leaves sizing to your CSS. Overridden by `widescreen`. See "Sizing" below |
 | `language`       | `string`  | browser language | BCP-47 language code for UI labels (see [Labels and translations](#labels-and-translations)) |
 | `labels`         | `Record<string, string>` | — | Per-player label overrides keyed by the English text, e.g. `{ Settings: 'Options' }` (see [Labels and translations](#labels-and-translations)) |
