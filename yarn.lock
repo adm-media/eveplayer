@@ -2626,9 +2626,9 @@ url-parse@^1.5.3:
     requires-port "^1.0.0"
 
 "video.js@^7 || ^8", video.js@^8.0.0:
-  version "8.24.0"
-  resolved "https://registry.yarnpkg.com/video.js/-/video.js-8.24.0.tgz#525dbe813299c4eb856866b45456f06c58977385"
-  integrity sha512-ZUuxTlDRkEWhpp2mvGCSFzI0Tc3zcC6IUZbIhBcZ3QW0Ms+IRp/tzYkhqexcMYwrcukRFiWWJmRANsLKvv8Vsg==
+  version "8.24.2"
+  resolved "https://registry.yarnpkg.com/video.js/-/video.js-8.24.2.tgz#e4e7fe445728c65b8533c90b5b14b5fc50e5e6b7"
+  integrity sha512-Ya8gFnxWxr/m8YYdOOjOqsAVLtbZ4/RI6Vpqn4KoAFdKBjl8vy5KXF/n7Z4GqPtArBG05/Z71WX6/gZS3HWLbg==
   dependencies:
     "@babel/runtime" "^7.28.4"
     "@videojs/http-streaming" "^3.17.5"
