@@ -19,6 +19,8 @@
   --eve-bar-height:      42px;
   --eve-progress-row-height: 7px;
   --eve-progress-dot-size: 12px;
+  /* Width of the hole cut in the progress bar at each chapter boundary. */
+  --eve-chapter-gap:     2px;
   --eve-volume-dot-size: 10px;
   --eve-control-width:   3em;
   --eve-transition:      0.18s ease;
@@ -1120,8 +1122,91 @@
 .vjsp-bookmark-marker:hover .vjsp-bookmark-tooltip { display: block; }
 
 /* ============================================================
+   Chapter segments
+   ============================================================ */
+/* With chapter markers on, EvePlayer.ts adds `.vjsp-chapter-segments` to the
+   holder and sets `--vjsp-chapter-mask`: a gradient that is opaque except for
+   a `--eve-chapter-gap` hole at each chapter boundary. The mask goes on the
+   bar's three painted layers rather than on the holder, whose descendants
+   (time bubbles, thumbnail, chapter title, bookmarks) would be clipped with
+   it: the track moves to `::before`, the played fill to `::after` (the play
+   progress element also holds the scrubber dot and the playhead bubble), and
+   the buffered fill, which holds nothing else, is masked directly. Both
+   fills are narrower than the bar, so their mask is sized to the bar's full
+   width (`--vjsp-holder-width`, in px, set from a ResizeObserver) and pinned
+   to their left edge, which is the bar's. */
+.video-js .vjs-progress-holder.vjsp-chapter-segments {
+  background: transparent;
+}
+
+.video-js .vjsp-chapter-segments::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.22);
+  -webkit-mask-image: var(--vjsp-chapter-mask);
+  mask-image: var(--vjsp-chapter-mask);
+  pointer-events: none;
+}
+
+.video-js .vjsp-chapter-segments .vjs-play-progress {
+  background-color: transparent;
+}
+
+.video-js .vjsp-chapter-segments .vjs-play-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--eve-accent, #e00);
+  pointer-events: none;
+}
+
+.video-js .vjsp-chapter-segments .vjs-load-progress,
+.video-js .vjsp-chapter-segments .vjs-play-progress::after {
+  -webkit-mask-image: var(--vjsp-chapter-mask);
+  mask-image: var(--vjsp-chapter-mask);
+  -webkit-mask-size: var(--vjsp-holder-width, 100%) 100%;
+  mask-size: var(--vjsp-holder-width, 100%) 100%;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Chapter title shown while the mouse hovers the bar. EvePlayer.ts sets its
+   `left` (centred on the mouse, kept inside the bar) and `bottom` (just above
+   Video.js's time bubble); the `bottom` below is only the fallback. */
+.vjsp-chapter-label {
+  display:         none;
+  position:        absolute;
+  bottom:          calc(100% + 8px);
+  left:            0;
+  max-width:       min(280px, 100%);
+  padding:         4px 8px;
+  border-radius:   var(--eve-radius);
+  background:      var(--eve-control-bg);
+  color:           var(--eve-control-color);
+  font-size:       12px;
+  font-weight:     600;
+  line-height:     1.3;
+  white-space:     nowrap;
+  overflow:        hidden;
+  text-overflow:   ellipsis;
+  pointer-events:  none;
+  z-index:         2;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.vjsp-chapter-label--visible { display: block; }
+
+/* ============================================================
    Thumbnail-tile hover preview (DASH-IF thumbnail_tile convention)
    ============================================================ */
+/* EvePlayer.ts sets `bottom` so the thumbnail sits above the time bubble and
+   the chapter title instead of covering them; the value here is the fallback. */
 .vjsp-thumbnail-preview {
   display:         none;
   position:        absolute;

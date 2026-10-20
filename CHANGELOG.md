@@ -4,6 +4,21 @@ Every notable change to `@admmedia/eveplayer`, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-20
+
+### Added
+
+- Chapters on the timeline: with a `kind: 'chapters'` text track, the progress
+  bar is split into one segment per chapter and hovering it shows the chapter
+  title above the time. On by default; `chapterMarkers: false` turns it off,
+  independently of the chapters button. The gap between segments is the
+  `--eve-chapter-gap` CSS variable (default `2px`). Not shown on live streams.
+
+### Fixed
+
+- The thumbnail preview no longer covers the time shown while hovering the
+  progress bar: it now sits above it.
+
 ## [1.1.0] - 2026-10-12
 
 ### Added
@@ -54,6 +69,7 @@ Every notable change to `@admmedia/eveplayer`, newest first. The format follows
 
 First public release.
 
+[1.2.0]: https://github.com/adm-media/eveplayer/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/adm-media/eveplayer/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/adm-media/eveplayer/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/adm-media/eveplayer/compare/v1.0.0...v1.0.1

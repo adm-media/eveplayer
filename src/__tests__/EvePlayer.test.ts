@@ -1072,6 +1072,39 @@ Thumbnail_000000001.jpg
       player.dispose();
       expect(container.querySelector('.vjsp-thumbnail-preview')).toBeNull();
     });
+
+    it('stacks the title above the time bubble and the thumbnail above the title', async () => {
+      stubFetch(MPD_WITH_THUMBNAILS);
+      const holder = makeProgressHolder(container);
+      holder.getBoundingClientRect = () =>
+        ({ left: 0, width: 300, top: 100, height: 5, right: 300, bottom: 105, x: 0, y: 100, toJSON() {} }) as DOMRect;
+      const display = document.createElement('div');
+      display.className = 'vjs-mouse-display';
+      const tip = document.createElement('div');
+      tip.className = 'vjs-time-tooltip';
+      tip.getBoundingClientRect = () =>
+        ({ left: 0, width: 50, top: 60, height: 26, right: 50, bottom: 86, x: 0, y: 60, toJSON() {} }) as DOMRect;
+      display.appendChild(tip);
+      holder.appendChild(display);
+
+      player.setSource({ sources: [{ src: 'https://cdn.example.com/stream.mpd', type: 'application/dash+xml' }] });
+      const tracks = mockInstance._textTracks;
+      (tracks as unknown as Record<string, unknown>)[0] = createMockChaptersTrack([
+        createMockCue({ id: 'c1', startTime: 0, endTime: 120, text: 'Intro' }),
+      ]);
+      tracks.length = 1;
+      mockInstance.trigger('loadedmetadata');
+      await flush();
+      Object.defineProperty(container.querySelector<HTMLElement>('.vjsp-chapter-label')!, 'offsetHeight', { value: 24 });
+
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 30 }));
+
+      // Bubble top is 45px above the bar's bottom (105 - 60), plus the 6px gap.
+      expect(container.querySelector<HTMLElement>('.vjsp-chapter-label')!.style.bottom).toBe('51px');
+      const preview = container.querySelector<HTMLElement>('.vjsp-thumbnail-preview')!;
+      expect(preview.classList.contains('vjsp-thumbnail-preview--visible')).toBe(true);
+      expect(preview.style.bottom).toBe(`${51 + 24 + 6}px`);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -1487,6 +1520,223 @@ Thumbnail_000000001.jpg
       cue.trigger('enter');
 
       expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('chapter markers on the timeline', () => {
+    // Duration is 120s in the mock: chapters cut the bar at 25% and 75%.
+    const setChapters = (cues: { startTime: number; endTime: number; text: string }[]) => {
+      const tracks = mockInstance._textTracks;
+      (tracks as unknown as Record<string, unknown>)[0] = createMockChaptersTrack(
+        cues.map((c, i) => createMockCue({ id: `c${i}`, ...c }))
+      );
+      tracks.length = 1;
+    };
+    const threeChapters = () =>
+      setChapters([
+        { startTime: 0, endTime: 30, text: 'Intro' },
+        { startTime: 30, endTime: 90, text: 'Middle' },
+        { startTime: 90, endTime: 120, text: 'End' },
+      ]);
+    const withRect = (holder: HTMLElement, width = 300) => {
+      holder.getBoundingClientRect = () =>
+        ({ left: 0, width, top: 100, height: 5, right: width, bottom: 105, x: 0, y: 100, toJSON() {} }) as DOMRect;
+    };
+    const label = () => container.querySelector<HTMLElement>('.vjsp-chapter-label');
+    const isVisible = (el: HTMLElement | null) => !!el?.classList.contains('vjsp-chapter-label--visible');
+
+    it('cuts the bar at each chapter boundary, not at its ends', () => {
+      const holder = makeProgressHolder(container);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(true);
+      const mask = holder.style.getPropertyValue('--vjsp-chapter-mask');
+      expect(mask).toContain('calc(25% - var(--eve-chapter-gap, 2px) / 2)');
+      expect(mask).toContain('calc(75% + var(--eve-chapter-gap, 2px) / 2)');
+      expect(mask).not.toContain('calc(0%');
+      expect(mask).not.toContain('calc(100%');
+      expect(mask.match(/transparent/g)).toHaveLength(2);
+    });
+
+    it('merges a cue end and the next start a few milliseconds apart into one cut', () => {
+      const holder = makeProgressHolder(container);
+      setChapters([
+        { startTime: 0, endTime: 59.98, text: 'A' },
+        { startTime: 60, endTime: 120, text: 'B' },
+      ]);
+      mockInstance.trigger('loadedmetadata');
+
+      expect(holder.style.getPropertyValue('--vjsp-chapter-mask').match(/transparent/g)).toHaveLength(1);
+    });
+
+    it('draws no segments for a single chapter spanning the whole video', () => {
+      const holder = makeProgressHolder(container);
+      setChapters([{ startTime: 0, endTime: 120, text: 'Everything' }]);
+      mockInstance.trigger('loadedmetadata');
+
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(false);
+    });
+
+    it('draws nothing on a live stream (no finite duration)', () => {
+      const holder = makeProgressHolder(container);
+      withRect(holder);
+      mockInstance.duration = vi.fn(() => Infinity);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(false);
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 150 }));
+      expect(isVisible(label())).toBe(false);
+    });
+
+    it('picks up cues that arrive after loadedmetadata (durationchange, track change, VTT load)', () => {
+      const holder = makeProgressHolder(container);
+      mockInstance.trigger('loadedmetadata');
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(false);
+
+      threeChapters();
+      mockInstance.trigger('durationchange');
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(true);
+    });
+
+    it('renders once the side-loaded chapters VTT has loaded', () => {
+      const holder = makeProgressHolder(container);
+      player.setSource({
+        sources: [{ src: 'a.m3u8' }],
+        textTracks: [{ kind: 'chapters', src: 'chapters.vtt', srclang: 'en' }],
+      });
+      const trackEl = mockInstance.addRemoteTextTrack.mock.results[0].value as MockTrackElement;
+      threeChapters();
+      trackEl.trigger('load');
+
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(true);
+    });
+
+    it('re-renders when the text track list changes', () => {
+      const holder = makeProgressHolder(container);
+      threeChapters();
+      (mockInstance._textTracks as unknown as { _emit: (e: string) => void })._emit('change');
+
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(true);
+    });
+
+    it('clears the segments on a new source', () => {
+      const holder = makeProgressHolder(container);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(true);
+
+      player.setSource({ sources: [{ src: 'b.m3u8' }] });
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(false);
+      expect(holder.style.getPropertyValue('--vjsp-chapter-mask')).toBe('');
+    });
+
+    it('sizes the fill masks to the bar width and stops observing on dispose', () => {
+      let resize: (() => void) | undefined;
+      const disconnect = vi.fn();
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(cb: () => void) {
+            resize = cb;
+          }
+          observe = vi.fn();
+          disconnect = disconnect;
+        }
+      );
+      const holder = makeProgressHolder(container);
+      Object.defineProperty(holder, 'clientWidth', { value: 640 });
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+      mockInstance.trigger('loadedmetadata'); // a second render reuses the observer
+      resize!();
+
+      expect(holder.style.getPropertyValue('--vjsp-holder-width')).toBe('640px');
+      player.dispose();
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      vi.unstubAllGlobals();
+    });
+
+    it('shows the hovered chapter title above the bar and hides it on mouseleave', () => {
+      const holder = makeProgressHolder(container);
+      withRect(holder);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 150 })); // 60s
+      expect(isVisible(label())).toBe(true);
+      expect(label()!.textContent).toBe('Middle');
+      expect(label()!.getAttribute('aria-hidden')).toBe('true');
+      // No laid-out time bubble (jsdom): just above the 5px bar.
+      expect(label()!.style.bottom).toBe('11px');
+
+      holder.dispatchEvent(new MouseEvent('mouseleave'));
+      expect(isVisible(label())).toBe(false);
+    });
+
+    it('shows the chapter that starts at a boundary', () => {
+      const holder = makeProgressHolder(container);
+      withRect(holder);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 75 })); // exactly 30s
+      expect(label()!.textContent).toBe('Middle');
+    });
+
+    it('hides the title where no chapter covers the time', () => {
+      const holder = makeProgressHolder(container);
+      withRect(holder);
+      setChapters([
+        { startTime: 0, endTime: 30, text: 'Intro' },
+        { startTime: 90, endTime: 120, text: 'End' },
+      ]);
+      mockInstance.trigger('loadedmetadata');
+
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 15 }));
+      expect(isVisible(label())).toBe(true);
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 150 })); // 60s: no chapter
+      expect(isVisible(label())).toBe(false);
+    });
+
+    it('keeps the title inside the bar near its ends', () => {
+      const holder = makeProgressHolder(container);
+      withRect(holder);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+      Object.defineProperty(label()!, 'offsetWidth', { value: 80 });
+
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 5 }));
+      expect(label()!.style.left).toBe('0px');
+      holder.dispatchEvent(new MouseEvent('mousemove', { clientX: 299 }));
+      expect(label()!.style.left).toBe('220px');
+    });
+
+    it('does nothing with chapterMarkers: false', () => {
+      player.dispose();
+      container.remove();
+      container = makeContainer();
+      player = new EvePlayer(container, { chapterMarkers: false });
+      const holder = makeProgressHolder(container);
+      withRect(holder);
+      threeChapters();
+      mockInstance.trigger('loadedmetadata');
+
+      expect(holder.classList.contains('vjsp-chapter-segments')).toBe(false);
+      expect(label()).toBeNull();
+    });
+
+    it('binds no hover listeners with both thumbnails and chapterMarkers off', () => {
+      player.dispose();
+      container.remove();
+      container = makeContainer();
+      player = new EvePlayer(container, { chapterMarkers: false, thumbnails: false });
+      const holder = makeProgressHolder(container);
+      const add = vi.spyOn(holder, 'addEventListener');
+      mockInstance.trigger('loadedmetadata');
+
+      expect(add).not.toHaveBeenCalled();
     });
   });
 
@@ -3278,12 +3528,12 @@ Thumbnail_000000001.jpg
       ).not.toThrow();
     });
 
-    it('a hover move is ignored while no thumbnail tiles are loaded', () => {
+    it('a hover move is ignored while no thumbnail tiles or chapter cues are loaded', () => {
       const holder = makeProgressHolder(container);
       const getRect = vi.spyOn(holder, 'getBoundingClientRect');
       (
-        player as unknown as { _onThumbnailHoverMove: (e: MouseEvent, h: HTMLElement) => void }
-      )._onThumbnailHoverMove(new MouseEvent('mousemove'), holder);
+        player as unknown as { _onTimelineHoverMove: (e: MouseEvent, h: HTMLElement) => void }
+      )._onTimelineHoverMove(new MouseEvent('mousemove'), holder);
       expect(getRect).not.toHaveBeenCalled();
     });
   });

@@ -104,10 +104,11 @@ player.dispose();
 | `quality`        | `boolean` | `true`  | Show the "Quality" section inside the settings menu (auto-hidden if fewer than 2 levels) |
 | `captionSettings`| `boolean` | `true`  | Show the "captions settings" entry in the subtitles/CC menu (the text-track styling dialog). `false` drops both the entry and the dialog |
 | `chapters`       | `boolean` | `true`  | Show the chapters button in the control bar. It only appears when the source has a `kind: 'chapters'` track with cues; `false` removes it even then |
+| `chapterMarkers` | `boolean` | `true`  | Split the progress bar into one segment per chapter and show the chapter title on hover. Only with a `kind: 'chapters'` track with cues, never on live streams. Independent of `chapters`. See "Chapters" below |
 | `playbackRates`  | `number[]`| `[0.5, 0.75, 1, 1.25, 1.5, 2]` | Playback-speed steps offered in the settings menu |
 | `showProgressDot`| `boolean` | `false` | Show the scrubber dot at the head of the played portion of the progress bar |
 | `showVolumeDot`  | `boolean` | `false` | Show the handle dot at the head of the filled portion of the volume bar |
-| `thumbnails`     | `boolean` | `true`  | Show a thumbnail-preview popup on progress-bar hover (DASH sources with a thumbnail-tile track) |
+| `thumbnails`     | `boolean` | `true`  | Show a thumbnail-preview popup on progress-bar hover (DASH or HLS sources with a thumbnail-tile track) |
 | `fluid`          | `boolean` | `true`  | Full container width, height from the media's aspect ratio (16:9 until known). `false` lays the player out at the media's intrinsic size and leaves sizing to your CSS. Overridden by `widescreen`. See "Sizing" below |
 | `language`       | `string`  | browser language | BCP-47 language code for UI labels (see [Labels and translations](#labels-and-translations)) |
 | `labels`         | `Record<string, string>` | — | Per-player label overrides keyed by the English text, e.g. `{ Settings: 'Options' }` (see [Labels and translations](#labels-and-translations)) |
@@ -292,6 +293,14 @@ match the settings / audio / subs menus; clicking a row seeks to that chapter
 and the row for the chapter playing carries the accent checkmark. Pass
 `chapters: false` to remove the button even when a chapters track is present
 (`getChapterCues()` and `chapterentercue` keep working).
+
+The same cues also mark up the timeline (`chapterMarkers`, on by default): the
+progress bar is split into one segment per chapter, with a small gap at each
+boundary (`--eve-chapter-gap`, default `2px`), and while the mouse hovers the
+bar the title of the chapter under it shows right above the time. When the
+source also has thumbnails, the thumbnail sits above the title. Live streams
+get neither. Pass `chapterMarkers: false` to keep a plain bar; it is
+independent of `chapters`, so either can be turned off alone.
 
 ### Picture-in-Picture
 
@@ -532,6 +541,7 @@ Override CSS custom properties on any ancestor element to theme the player:
 | `--eve-radius`        | `4px`                              | Corner radius on menus and popups             |
 | `--eve-bar-height`    | `42px`                             | Control bar height                            |
 | `--eve-transition`    | `0.18s ease`                       | Shared hover/state transition timing          |
+| `--eve-chapter-gap`   | `2px`                              | Width of the gap between chapter segments on the progress bar |
 | `--eve-pip-width`     | `340px`                            | Width of the floating PiP overlay             |
 | `--eve-pip-radius`    | `10px`                             | Corner radius of the floating PiP overlay     |
 | `--eve-pip-shadow`    | `0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08)` | Drop shadow of the floating PiP overlay |
