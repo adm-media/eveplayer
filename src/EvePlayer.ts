@@ -99,6 +99,53 @@ function thumbnailPreviewScale(tileWidth: number): number {
   return Math.min(THUMBNAIL_PREVIEW_WIDTH / tileWidth, THUMBNAIL_PREVIEW_MAX_SCALE);
 }
 
+// Vertical space, in CSS pixels, between the popups stacked above the progress
+// bar on hover: Video.js's time bubble, the chapter title, the thumbnail.
+const TIMELINE_POPUP_GAP = 6;
+
+// Chapter boundaries closer than this (seconds) to each other are one cut, and
+// cuts this close to either end of the timeline are dropped.
+const CHAPTER_CUT_MARGIN = 0.5;
+
+/**
+ * Times (seconds) where one chapter ends or the next begins, strictly inside
+ * the timeline, sorted, with near-duplicates merged: a cue's end and the next
+ * cue's start are usually the same instant, but hand-written WebVTT often has
+ * them a few milliseconds apart.
+ */
+function chapterBoundaries(cues: ChapterCue[], duration: number): number[] {
+  const times = cues
+    .flatMap((c) => [c.startTime, c.endTime])
+    .filter((t) => t > CHAPTER_CUT_MARGIN && t < duration - CHAPTER_CUT_MARGIN)
+    .sort((a, b) => a - b);
+  const cuts: number[] = [];
+  for (const t of times) {
+    if (cuts.length === 0 || t - cuts[cuts.length - 1] > CHAPTER_CUT_MARGIN) cuts.push(t);
+  }
+  return cuts;
+}
+
+/**
+ * CSS mask that is opaque everywhere except a `--eve-chapter-gap`-wide hole
+ * centred on each cut. `percents` are positions along the bar (0-100).
+ */
+function chapterMaskGradient(percents: number[]): string {
+  const half = 'var(--eve-chapter-gap, 2px) / 2';
+  const stops = percents.map((p) => {
+    const at = `${+p.toFixed(4)}%`;
+    return `#000 0 calc(${at} - ${half}), transparent 0 calc(${at} + ${half})`;
+  });
+  return `linear-gradient(to right, ${stops.join(', ')}, #000 0)`;
+}
+
+/** The chapter playing at `time`; at a boundary, the one that starts there. */
+function chapterAt(cues: ChapterCue[], time: number): ChapterCue | undefined {
+  for (let i = cues.length - 1; i >= 0; i--) {
+    if (cues[i].startTime <= time && time <= cues[i].endTime) return cues[i];
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Custom Video.js PiP button (registered once per page load)
 // ---------------------------------------------------------------------------
@@ -609,8 +656,16 @@ export class EvePlayer {
   private _thumbnailManifestKind: 'dash' | 'hls' | null = null;
   private _thumbnailFetchToken = 0;
   private _thumbnailPreviewEl: HTMLElement | null = null;
-  private _thumbnailHoverBound = false;
-  private _thumbnailHoverCleanup: (() => void) | null = null;
+
+  // Chapter segments on the progress bar and the chapter title shown on hover.
+  private readonly _chapterMarkersEnabled: boolean;
+  private _chapterCues: ChapterCue[] = [];
+  private _chapterLabelEl: HTMLElement | null = null;
+  private _chapterHolderObserver: ResizeObserver | null = null;
+
+  // Progress-bar hover listeners shared by the thumbnail and chapter popups.
+  private _timelineHoverBound = false;
+  private _timelineHoverCleanup: (() => void) | null = null;
 
   /**
    * Version of this library, as published (the `package.json` version baked
@@ -658,6 +713,7 @@ export class EvePlayer {
     this.container = container;
     this.emitter = new EventEmitter();
     this._thumbnailsEnabled = options.thumbnails ?? true;
+    this._chapterMarkersEnabled = options.chapterMarkers ?? true;
     this._pipPlaceholderText = options.pipPlaceholderText;
     this._labels = { ...options.labels };
     this._qualityEnabled = options.quality !== false;
@@ -973,9 +1029,14 @@ export class EvePlayer {
       this.renderBookmarks();
       this._refreshSettingsVisibility();
       this._bindChapterCueListeners();
+      this._renderChapterMarkers();
       this._loadThumbnailTrack();
-      this._bindThumbnailHover();
+      this._bindTimelineHover();
     });
+
+    // The duration can settle after loadedmetadata; the chapter segments are
+    // positioned against it.
+    this.vjs.on('durationchange', () => this._renderChapterMarkers());
 
     // Settings menu toggle triggered by the custom gear button
     this.vjs.on('vjsp:settings-menu-toggle', () => {
@@ -1019,6 +1080,7 @@ export class EvePlayer {
       // A chapters track can become available (or gain cues) independently of
       // loadedmetadata; re-scan here too.
       this._bindChapterCueListeners();
+      this._renderChapterMarkers();
     };
     (this.vjs.textTracks() as unknown as EventTarget).addEventListener(
       'change',
@@ -1277,6 +1339,9 @@ export class EvePlayer {
    */
   setSource(source: SourceDescription): void {
     this.clearBookmarkMarkers();
+    this._chapterCues = [];
+    this._clearChapterSegments();
+    this._hideTimelinePopups();
     this.currentSource = source;
     // A new source starts with every VHS rendition enabled, i.e. in Auto, so
     // a manual pick made on the previous source must not survive it (it would
@@ -1468,7 +1533,10 @@ export class EvePlayer {
       false
     ) as unknown as HTMLTrackElement;
     if (track.kind === 'chapters') {
-      trackEl.addEventListener('load', () => this._bindChapterCueListeners());
+      trackEl.addEventListener('load', () => {
+        this._bindChapterCueListeners();
+        this._renderChapterMarkers();
+      });
     }
   }
 
@@ -1666,6 +1734,60 @@ export class EvePlayer {
   }
 
   // ---------------------------------------------------------------------------
+  // Chapter segments on the progress bar
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Splits the progress bar into one segment per chapter and refreshes the
+   * cue list the hover title reads from. Re-run whenever the cues or the
+   * duration may have changed; a live stream (no finite duration) gets
+   * neither segments nor titles.
+   *
+   * The gaps are real holes (the video shows through), cut by a CSS
+   * `mask-image` that `style.css` applies to the bar's three painted layers:
+   * the track (`.vjs-progress-holder::before`), the buffered fill
+   * (`.vjs-load-progress`) and the played fill (`.vjs-play-progress::after`).
+   * Masking the holder itself would also clip the time bubbles, the thumbnail
+   * and the chapter title, which all live inside it. The two fills are only as
+   * wide as the buffered/played fraction while the gradient's stops are
+   * fractions of the whole bar, so their mask is sized to the bar's width in px
+   * (`--vjsp-holder-width`, kept current by a ResizeObserver).
+   */
+  private _renderChapterMarkers(): void {
+    if (!this._chapterMarkersEnabled) return;
+    const duration = this.duration;
+    const finite = Number.isFinite(duration) && duration > 0;
+    this._chapterCues = finite ? this.getChapterCues() : [];
+    const cuts = finite ? chapterBoundaries(this._chapterCues, duration) : [];
+    const holder = this.container.querySelector<HTMLElement>('.vjs-progress-holder');
+    if (!holder || cuts.length === 0) {
+      this._clearChapterSegments();
+      return;
+    }
+    holder.style.setProperty(
+      '--vjsp-chapter-mask',
+      chapterMaskGradient(cuts.map((t) => (t / duration) * 100))
+    );
+    holder.classList.add('vjsp-chapter-segments');
+    if (!this._chapterHolderObserver && typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        holder.style.setProperty('--vjsp-holder-width', `${holder.clientWidth}px`);
+      });
+      observer.observe(holder);
+      this._chapterHolderObserver = observer;
+    }
+  }
+
+  private _clearChapterSegments(): void {
+    this._chapterHolderObserver?.disconnect();
+    this._chapterHolderObserver = null;
+    const holder = this.container.querySelector<HTMLElement>('.vjs-progress-holder');
+    if (!holder) return;
+    holder.classList.remove('vjsp-chapter-segments');
+    holder.style.removeProperty('--vjsp-chapter-mask');
+    holder.style.removeProperty('--vjsp-holder-width');
+  }
+  // ---------------------------------------------------------------------------
   // Thumbnail-tile hover preview (DASH-IF thumbnail_tile convention)
   // ---------------------------------------------------------------------------
 
@@ -1701,35 +1823,120 @@ export class EvePlayer {
       });
   }
 
-  /** Binds progress-bar hover listeners once the native holder element exists. Safe to call repeatedly. */
-  private _bindThumbnailHover(): void {
-    if (!this._thumbnailsEnabled || this._thumbnailHoverBound) return;
+  // ---------------------------------------------------------------------------
+  // Progress-bar hover popups (chapter title + thumbnail)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Binds the progress-bar hover listeners that drive the thumbnail preview
+   * and the chapter title, once the native holder element exists. Each popup
+   * is only created when its option is on. Safe to call repeatedly.
+   */
+  private _bindTimelineHover(): void {
+    if (this._timelineHoverBound) return;
+    if (!this._thumbnailsEnabled && !this._chapterMarkersEnabled) return;
     const holder = this.container.querySelector<HTMLElement>('.vjs-progress-holder');
     if (!holder) return;
-    this._thumbnailHoverBound = true;
+    this._timelineHoverBound = true;
 
-    const preview = document.createElement('div');
-    preview.className = 'vjsp-thumbnail-preview';
-    holder.appendChild(preview);
-    this._thumbnailPreviewEl = preview;
+    const popups: HTMLElement[] = [];
+    if (this._thumbnailsEnabled) {
+      const preview = document.createElement('div');
+      preview.className = 'vjsp-thumbnail-preview';
+      holder.appendChild(preview);
+      this._thumbnailPreviewEl = preview;
+      popups.push(preview);
+    }
+    if (this._chapterMarkersEnabled) {
+      // Visual only: the title is already announced by the chapters menu, and
+      // the bar's own aria-valuetext carries the time.
+      const label = document.createElement('div');
+      label.className = 'vjsp-chapter-label';
+      label.setAttribute('aria-hidden', 'true');
+      holder.appendChild(label);
+      this._chapterLabelEl = label;
+      popups.push(label);
+    }
 
-    const onMove = (e: MouseEvent) => this._onThumbnailHoverMove(e, holder);
-    const onLeave = () => this._hideThumbnailPreview();
+    const onMove = (e: MouseEvent) => this._onTimelineHoverMove(e, holder);
+    const onLeave = () => this._hideTimelinePopups();
     holder.addEventListener('mousemove', onMove);
     holder.addEventListener('mouseleave', onLeave);
-    this._thumbnailHoverCleanup = () => {
+    this._timelineHoverCleanup = () => {
       holder.removeEventListener('mousemove', onMove);
       holder.removeEventListener('mouseleave', onLeave);
-      preview.remove();
+      for (const el of popups) el.remove();
+      this._thumbnailPreviewEl = null;
+      this._chapterLabelEl = null;
     };
   }
 
-  private _onThumbnailHoverMove(e: MouseEvent, holder: HTMLElement): void {
-    if (this._thumbnailTiles.length === 0 || !this._thumbnailPreviewEl) return;
+  /**
+   * Places the hover popups for the point under the mouse. They stack upwards
+   * from Video.js's own time bubble: the chapter title right above it, the
+   * thumbnail above the title (or above the bubble when there is no title),
+   * so none of the three hides another.
+   */
+  private _onTimelineHoverMove(e: MouseEvent, holder: HTMLElement): void {
+    const preview = this._thumbnailTiles.length > 0 ? this._thumbnailPreviewEl : null;
+    const label = this._chapterCues.length > 0 ? this._chapterLabelEl : null;
+    if (!preview && !label) return;
     const rect = holder.getBoundingClientRect();
     if (rect.width === 0) return;
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const tile = findThumbnailTile(this._thumbnailTiles, pct * this.duration);
+    const time = pct * this.duration;
+
+    let bottom = this._timelinePopupBase(holder, rect);
+    if (label) bottom = this._placeChapterLabel(label, time, pct, rect, bottom);
+    if (preview) this._placeThumbnailPreview(preview, time, pct, rect, bottom);
+  }
+
+  /**
+   * Distance in px from the bar's bottom edge to where the first popup goes:
+   * just above Video.js's mouse time bubble, or just above the bar when the
+   * bubble is not laid out (hidden by a consumer's CSS, or under jsdom).
+   */
+  private _timelinePopupBase(holder: HTMLElement, rect: DOMRect): number {
+    const tip = holder.querySelector('.vjs-mouse-display .vjs-time-tooltip');
+    const tipRect = tip?.getBoundingClientRect();
+    const below = tipRect && tipRect.height > 0 ? rect.bottom - tipRect.top : rect.height;
+    return below + TIMELINE_POPUP_GAP;
+  }
+
+  /**
+   * Shows the title of the chapter at `time`, centred on the mouse and kept
+   * inside the bar, `bottom` px above the bar. Returns where the next popup
+   * up should go (unchanged when there is no chapter there).
+   */
+  private _placeChapterLabel(
+    el: HTMLElement,
+    time: number,
+    pct: number,
+    rect: DOMRect,
+    bottom: number
+  ): number {
+    const cue = chapterAt(this._chapterCues, time);
+    if (!cue?.text) {
+      el.classList.remove('vjsp-chapter-label--visible');
+      return bottom;
+    }
+    if (el.textContent !== cue.text) el.textContent = cue.text;
+    el.classList.add('vjsp-chapter-label--visible');
+    const width = el.offsetWidth;
+    el.style.left = `${Math.max(0, Math.min(rect.width - width, pct * rect.width - width / 2))}px`;
+    el.style.bottom = `${bottom}px`;
+    return bottom + el.offsetHeight + TIMELINE_POPUP_GAP;
+  }
+
+  /** Shows the thumbnail tile for `time`, `bottom` px above the bar, or hides it when none covers that time. */
+  private _placeThumbnailPreview(
+    el: HTMLElement,
+    time: number,
+    pct: number,
+    rect: DOMRect,
+    bottom: number
+  ): void {
+    const tile = findThumbnailTile(this._thumbnailTiles, time);
     if (!tile) {
       this._hideThumbnailPreview();
       return;
@@ -1738,18 +1945,23 @@ export class EvePlayer {
     const width = tile.width * scale;
     const height = tile.height * scale;
     const left = Math.max(0, Math.min(rect.width - width, pct * rect.width - width / 2));
-    const el = this._thumbnailPreviewEl;
     el.style.backgroundImage = `url(${tile.imageUrl})`;
     el.style.backgroundSize = `${tile.sheetWidth * scale}px ${tile.sheetHeight * scale}px`;
     el.style.backgroundPosition = `-${tile.x * scale}px -${tile.y * scale}px`;
     el.style.width = `${width}px`;
     el.style.height = `${height}px`;
     el.style.left = `${left}px`;
+    el.style.bottom = `${bottom}px`;
     el.classList.add('vjsp-thumbnail-preview--visible');
   }
 
   private _hideThumbnailPreview(): void {
     this._thumbnailPreviewEl?.classList.remove('vjsp-thumbnail-preview--visible');
+  }
+
+  private _hideTimelinePopups(): void {
+    this._hideThumbnailPreview();
+    this._chapterLabelEl?.classList.remove('vjsp-chapter-label--visible');
   }
 
   // ---------------------------------------------------------------------------
@@ -2590,8 +2802,9 @@ export class EvePlayer {
       this._liveBehindInterval = null;
     }
 
-    this._thumbnailHoverCleanup?.();
-    this._thumbnailHoverCleanup = null;
+    this._timelineHoverCleanup?.();
+    this._timelineHoverCleanup = null;
+    this._clearChapterSegments();
 
     this._renditionSource?.off?.('mediachange', this._onMediaChange);
     this._renditionSource = undefined;

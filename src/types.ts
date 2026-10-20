@@ -161,6 +161,16 @@ export interface PlayerOptions {
    * to `false` to remove it even then.
    */
   chapters?: boolean;
+  /**
+   * Split the progress bar into one segment per chapter, with a small gap at
+   * each chapter boundary, and show the chapter title above the time while
+   * the mouse hovers the bar. Default: true. Like the chapters button, it only
+   * shows when the current source has a `kind: 'chapters'` text track with
+   * cues, and it is skipped on live streams. Independent of
+   * {@link PlayerOptions.chapters}: either can be turned off without the other.
+   * The gap width is the `--eve-chapter-gap` CSS variable (default `2px`).
+   */
+  chapterMarkers?: boolean;
   /** Playback-speed steps offered in the settings menu. Default: [0.5, 0.75, 1, 1.25, 1.5, 2]. */
   playbackRates?: number[];
   /** Show the scrubber dot at the head of the played portion of the progress bar. Default: false. */
