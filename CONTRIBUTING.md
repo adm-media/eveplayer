@@ -111,7 +111,9 @@ say), open an issue and explain why. It then follows the usual
 
 Requirements:
 
-- **Node.js 22** (the version CI uses)
+- **Node.js 22.22.2 or newer** in the 22 line (CI uses the latest 22). The
+  repository has an `.nvmrc`, so with [nvm](https://github.com/nvm-sh/nvm)
+  `nvm install` sets up the right version.
 - **Yarn 1.x** (classic)
 
 ```bash
