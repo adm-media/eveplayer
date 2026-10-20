@@ -63,6 +63,10 @@ the change was checked in a real browser:
   short recording.
 - **Steps:** enough for a maintainer to repeat the check.
 
+`yarn storybook` is the quickest way to get there: it runs the player from
+`src/` in a real browser, with every option as a control, a choice of public
+test streams or a URL of your own, and every event logged in the Actions panel.
+
 For a change with no runtime effect (documentation, types only, tooling), write
 `N/A` and say why.
 
@@ -131,6 +135,7 @@ yarn install
 | `src/index.ts` | Public entry point. Only what is exported here is public API. |
 | `src/EventEmitter.ts`, `src/dashThumbnails.ts` | Internal helpers. |
 | `src/__tests__/` | Vitest + jsdom unit tests. |
+| `src/stories/`, `.storybook/` | The Storybook: a playground with every `PlayerOptions` field as a control, run against `src/`. Not part of the package. |
 | `lang/` | The player's own UI labels: `en.json` (the reference list) and one translation per language. |
 | `scripts/` | Build steps run after `tsup`: third-party notices, and `build-lang.mjs`, which merges `lang/` with the Video.js dictionaries into `dist/lang/`. |
 | `docs/architecture.md`, `docs/adr/` | The "why" behind the non-obvious parts (mainly the ABR subsystem). |
@@ -146,6 +151,8 @@ yarn install
 | `yarn coverage` | Run tests with the coverage gate (95% statements / branches / functions / lines). |
 | `yarn typecheck` | `tsc --noEmit`. |
 | `yarn lint` | ESLint over `src`. |
+| `yarn storybook` | Storybook dev server on http://localhost:6006, against `src/`. |
+| `yarn build-storybook` | Static Storybook in `storybook-static/`. |
 
 ### Branch naming
 
@@ -207,6 +214,8 @@ Before opening a PR, make sure:
       `README.md` and the relevant guide in `docs/` in the same PR. The API
       reference is generated from `src/index.ts` + JSDoc, so the JSDoc must be
       accurate.
+- [ ] A new or changed `PlayerOptions` field has its control in
+      `src/stories/EvePlayer.stories.ts` (default, description, category).
 - [ ] `docs/architecture.md` is updated when ABR tuning changes; add an ADR under
       `docs/adr/` only for decisions with a real trade-off.
 - [ ] The commit history is readable — imperative, present-tense subject lines
@@ -216,7 +225,8 @@ Open the PR against the `main` branch. The **PR issue gate** workflow
 (`.github/workflows/pr-issue-gate.yml`) checks the linked issue, and the
 **CI** workflow
 (`.github/workflows/ci.yml`) re-runs `yarn lint`, `yarn typecheck`,
-`yarn coverage` and `yarn build` on every PR and push to `main`.
+`yarn coverage`, `yarn build` and `yarn build-storybook` on every PR and push
+to `main`.
 It does **not** check Prettier formatting — run that locally.
 
 ## Coding notes
@@ -252,7 +262,10 @@ workflow then, in order:
 6. only then pushes the `vX.Y.Z` tag and opens a GitHub Release, whose text is
    that version's `CHANGELOG.md` section;
 7. purges the jsDelivr cache for `@<major>` and `@latest`, so pages loading
-   the CDN build by range get the new release right away (best effort).
+   the CDN build by range get the new release right away (best effort);
+8. republishes the [Storybook](https://storybook.eveplayer.dev) to
+   GitHub Pages from the new tag, through the **Storybook** workflow
+   (`.github/workflows/storybook.yml`), which can also be run by hand.
 
 A failed publish therefore never leaves a tag for a version that does not
 exist. Contributors don't need to touch versions or `CHANGELOG.md`: `package.json` is set during

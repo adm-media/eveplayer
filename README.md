@@ -6,6 +6,8 @@ Supports **MP4**, **MP3**, **HLS** (`.m3u8`), **MPEG-DASH** (`.mpd`), and **CMAF
 
 A React wrapper is maintained in a separate repository and consumes this package as a dependency.
 
+**Try it in the [Storybook](https://storybook.eveplayer.dev):** every constructor option is a control to play with, on Sintel (MP4), Big Buck Bunny (HLS) or a URL of your own, with the matching code to copy and every event logged in the Actions panel.
+
 ---
 
 ## Installation

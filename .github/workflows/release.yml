@@ -31,6 +31,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       # Releasing from a feature branch would publish work that is not on the
       # default branch, under a tag nobody can find.
@@ -144,3 +146,16 @@ jobs:
               curl -fsS -o /dev/null "$URL" && echo "purged $URL" || echo "::warning::could not purge $URL"
             done
           done
+
+  # Republishes the Storybook from the new tag. The release is already out, so
+  # a failure here leaves npm and the tag as they are: rerun the Storybook
+  # workflow by hand with that tag.
+  storybook:
+    needs: release
+    uses: ./.github/workflows/storybook.yml
+    with:
+      ref: ${{ needs.release.outputs.tag }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
