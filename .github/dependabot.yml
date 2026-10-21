@@ -36,6 +36,8 @@ updates:
         patterns: ["@typescript-eslint/*"]
       vitest:
         patterns: ["vitest", "@vitest/*"]
+      storybook:
+        patterns: ["storybook", "@storybook/*"]
       # Everything else that does not ship, minor and patch only. Majors
       # still arrive one pull request each.
       tooling:
