@@ -262,10 +262,7 @@ workflow then, in order:
 6. only then pushes the `vX.Y.Z` tag and opens a GitHub Release, whose text is
    that version's `CHANGELOG.md` section;
 7. purges the jsDelivr cache for `@<major>` and `@latest`, so pages loading
-   the CDN build by range get the new release right away (best effort);
-8. republishes the [Storybook](https://storybook.eveplayer.dev) to
-   GitHub Pages from the new tag, through the **Storybook** workflow
-   (`.github/workflows/storybook.yml`), which can also be run by hand.
+   the CDN build by range get the new release right away (best effort).
 
 A failed publish therefore never leaves a tag for a version that does not
 exist. Contributors don't need to touch versions or `CHANGELOG.md`: `package.json` is set during

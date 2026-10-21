@@ -5,9 +5,7 @@
 import { readFileSync } from 'node:fs';
 import type { StorybookConfig } from '@storybook/html-vite';
 
-// Same build-time constant tsup inlines for `EvePlayer.version`. The release
-// workflow sets package.json to the released version before building the
-// published Storybook, so the page names the version it shows.
+// Same build-time constant tsup inlines for `EvePlayer.version`.
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   version: string;
 };

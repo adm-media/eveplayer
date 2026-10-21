@@ -130,6 +130,7 @@ const OPTION_DEFAULTS: OptionArgs = {
   maxBandwidth: undefined,
   captionSettings: true,
   chapters: true,
+  chapterMarkers: true,
   thumbnails: true,
   language: '',
   labels: {},
@@ -508,6 +509,12 @@ const meta: Meta<PlaygroundArgs> = {
     chapters: {
       description:
         'Show the chapters button. It appears only when the source has a chapters track with cues, as Sintel does.',
+      control: 'boolean',
+      table: { category: categories.tracks },
+    },
+    chapterMarkers: {
+      description:
+        'Split the progress bar into one segment per chapter and show the chapter title while hovering it. Only with a chapters track with cues, as Sintel has; not on live streams. Independent of `chapters`.',
       control: 'boolean',
       table: { category: categories.tracks },
     },
