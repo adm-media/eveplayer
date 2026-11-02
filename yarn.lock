@@ -1172,21 +1172,19 @@
     global "~4.4.0"
     is-function "^1.0.1"
 
-"@vitest/coverage-v8@^4.1.11":
-  version "4.1.11"
-  resolved "https://registry.yarnpkg.com/@vitest/coverage-v8/-/coverage-v8-4.1.11.tgz#6f0636abe7e23e86dd35127244554be2c60bc2a5"
-  integrity sha512-8MVGEFnJIcdGjcbfKmeq8z0pZHH0JlVtoVZH9Q/qwUp6wyFnEJUBMrw9DCaj+ra3vShGmhavjalMIhPNxZAUcw==
+"@vitest/coverage-v8@^5.0.5":
+  version "5.0.5"
+  resolved "https://registry.yarnpkg.com/@vitest/coverage-v8/-/coverage-v8-5.0.5.tgz#0d71664390bf0576486996c2fda8a6db683622b7"
+  integrity sha512-4KpkGdIrSqBihx/JyP/e+S+IKB98etg1XDQiLAxksLfcShnwi1VReGeOT9NI43hLHbknosKp/1CCLn9Zgcs8mg==
   dependencies:
     "@bcoe/v8-coverage" "^1.0.2"
-    "@vitest/utils" "4.1.11"
-    ast-v8-to-istanbul "^1.0.0"
-    istanbul-lib-coverage "^3.2.2"
-    istanbul-lib-report "^3.0.1"
-    istanbul-reports "^3.2.0"
-    magicast "^0.5.2"
-    obug "^2.1.1"
-    std-env "^4.0.0-rc.1"
-    tinyrainbow "^3.1.0"
+    "@vitest/istanbul-lib-coverage" "^1.0.2"
+    "@vitest/istanbul-lib-report" "^1.0.2"
+    ast-v8-to-istanbul "^1.0.7"
+    magicast "^0.5.5"
+    obug "^3.0.0"
+    std-env "^4.3.0"
+    tinyrainbow "^3.2.0"
 
 "@vitest/expect@3.2.4":
   version "3.2.4"
@@ -1211,6 +1209,18 @@
     chai "^6.2.2"
     tinyrainbow "^3.1.0"
 
+"@vitest/istanbul-lib-coverage@1.0.2", "@vitest/istanbul-lib-coverage@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@vitest/istanbul-lib-coverage/-/istanbul-lib-coverage-1.0.2.tgz#6aa430639cfd27809bb4611021ddd43f06d7a24f"
+  integrity sha512-9J/JMwOf9AoJhAywhrn7ScKTL38hsWQP/qPG60OtaAFcQ5OXPwKsxZFlbnuCKmZ61m8/lGgHYnFpdyQZUvG/iA==
+
+"@vitest/istanbul-lib-report@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@vitest/istanbul-lib-report/-/istanbul-lib-report-1.0.2.tgz#e9eb0a96504d94b947955fcf5c6a56ab778e3ef2"
+  integrity sha512-gUsfXZJbzPamoIY5TvHFiMMoXESBrUMo+xqaj+rYrWI69+EnvRlYBlP96ZnHPY4vX8kyUpgAnFUCg5wZG/HkDQ==
+  dependencies:
+    "@vitest/istanbul-lib-coverage" "1.0.2"
+
 "@vitest/mocker@4.1.12":
   version "4.1.12"
   resolved "https://registry.yarnpkg.com/@vitest/mocker/-/mocker-4.1.12.tgz#13b241597b79695e401fd05b363bb8e79695dfac"
@@ -1226,13 +1236,6 @@
   integrity sha512-IVNZik8IVRJRTr9fxlitMKeJeXFFFN0JaB9PHPGQ8NKQbGpfjlTx9zO4RefN8gp7eqjNy8nyK3NZmBzOPeIxtA==
   dependencies:
     tinyrainbow "^2.0.0"
-
-"@vitest/pretty-format@4.1.11":
-  version "4.1.11"
-  resolved "https://registry.yarnpkg.com/@vitest/pretty-format/-/pretty-format-4.1.11.tgz#8b28eb8240771d6ea970e33beaeb41384b51868e"
-  integrity sha512-yiZzPbGTS9Sr/JpFl8zHrcIkAofNbFV6k21vIgQN/cY/oxZeXhJv5sc/MBJ5jFKWmWs+oJHw0UXLZjmf931+Vw==
-  dependencies:
-    tinyrainbow "^3.1.0"
 
 "@vitest/pretty-format@4.1.12":
   version "4.1.12"
@@ -1279,15 +1282,6 @@
     "@vitest/pretty-format" "3.2.4"
     loupe "^3.1.4"
     tinyrainbow "^2.0.0"
-
-"@vitest/utils@4.1.11":
-  version "4.1.11"
-  resolved "https://registry.yarnpkg.com/@vitest/utils/-/utils-4.1.11.tgz#9b27a4293b827942b223539bfab1bd9f7eada31b"
-  integrity sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==
-  dependencies:
-    "@vitest/pretty-format" "4.1.11"
-    convert-source-map "^2.0.0"
-    tinyrainbow "^3.1.0"
 
 "@vitest/utils@4.1.12":
   version "4.1.12"
@@ -1404,7 +1398,7 @@ ast-types@^0.16.1:
   dependencies:
     tslib "^2.0.1"
 
-ast-v8-to-istanbul@^1.0.0:
+ast-v8-to-istanbul@^1.0.7:
   version "1.0.7"
   resolved "https://registry.yarnpkg.com/ast-v8-to-istanbul/-/ast-v8-to-istanbul-1.0.7.tgz#ead45f98ca59413f048f1b1466a78b6c8a1070bb"
   integrity sha512-kFL68AG6ajd8fg248zwM9GQrUWEp79gsmjum34OEXjs4yHuUMZfYKwOLW9GMmB4oNvVrj+EAGxsP7ye2UR9UlA==
@@ -2021,11 +2015,6 @@ html-encoding-sniffer@^7.0.0:
   dependencies:
     "@exodus/bytes" "^1.15.1"
 
-html-escaper@^2.0.0:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/html-escaper/-/html-escaper-2.0.2.tgz#dfd60027da36a36dfcbe236262c00a5822681453"
-  integrity sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==
-
 ignore@^5.2.0, ignore@^5.3.1:
   version "5.3.2"
   resolved "https://registry.yarnpkg.com/ignore/-/ignore-5.3.2.tgz#3cd40e729f3643fd87cb04e50bf0eb722bc596f5"
@@ -2124,28 +2113,6 @@ isexe@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/isexe/-/isexe-2.0.0.tgz#e8fbf374dc556ff8947a10dcb0572d633f2cfa10"
   integrity sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==
-
-istanbul-lib-coverage@^3.0.0, istanbul-lib-coverage@^3.2.2:
-  version "3.2.2"
-  resolved "https://registry.yarnpkg.com/istanbul-lib-coverage/-/istanbul-lib-coverage-3.2.2.tgz#2d166c4b0644d43a39f04bf6c2edd1e585f31756"
-  integrity sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==
-
-istanbul-lib-report@^3.0.0, istanbul-lib-report@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/istanbul-lib-report/-/istanbul-lib-report-3.0.1.tgz#908305bac9a5bd175ac6a74489eafd0fc2445a7d"
-  integrity sha512-GCfE1mtsHGOELCU8e/Z7YWzpmybrx/+dSTfLrvY8qRmaY6zXTKWn6WQIjaAFw069icm6GVMNkgu0NzI4iPZUNw==
-  dependencies:
-    istanbul-lib-coverage "^3.0.0"
-    make-dir "^4.0.0"
-    supports-color "^7.1.0"
-
-istanbul-reports@^3.2.0:
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/istanbul-reports/-/istanbul-reports-3.2.0.tgz#cb4535162b5784aa623cee21a7252cf2c807ac93"
-  integrity sha512-HGYWWS/ehqTV3xN10i23tkPkpH46MLCIMFNCaaKNavAXTF1RkqxawEPtnjnGZ6XKSInBKkiOA5BKS+aZiY3AvA==
-  dependencies:
-    html-escaper "^2.0.0"
-    istanbul-lib-report "^3.0.0"
 
 joycon@^3.1.1:
   version "3.1.1"
@@ -2362,7 +2329,7 @@ magic-string@^0.30.17, magic-string@^0.30.21:
   dependencies:
     "@jridgewell/sourcemap-codec" "^1.5.5"
 
-magicast@^0.5.2:
+magicast@^0.5.5:
   version "0.5.5"
   resolved "https://registry.yarnpkg.com/magicast/-/magicast-0.5.5.tgz#66dfd87ba2a40b568d97ff0d2b888ad3580519cb"
   integrity sha512-UicdXN8zQ3JHlxVq+28afMXPr1z7WNY6+7EJnzTdQWkTAlMLF5fNCCKxJHBQwGaNGR11581EiQmQzx73+MvszA==
@@ -2370,13 +2337,6 @@ magicast@^0.5.2:
     "@babel/parser" "^7.29.7"
     "@babel/types" "^7.29.7"
     source-map-js "^1.2.1"
-
-make-dir@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/make-dir/-/make-dir-4.0.0.tgz#c3c2307a771277cd9638305f915c29ae741b614e"
-  integrity sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==
-  dependencies:
-    semver "^7.5.3"
 
 mdn-data@2.27.1:
   version "2.27.1"
@@ -2949,7 +2909,7 @@ saxes@^6.0.0:
   dependencies:
     xmlchars "^2.2.0"
 
-semver@^7.5.3, semver@^7.6.0, semver@^7.7.3:
+semver@^7.6.0, semver@^7.7.3:
   version "7.8.5"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.5.tgz#39b646037dd50c14fb451e7e4cac58ed8b863f69"
   integrity sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==
@@ -2996,7 +2956,7 @@ stackback@0.0.2:
   resolved "https://registry.yarnpkg.com/stackback/-/stackback-0.0.2.tgz#1ac8a0d9483848d1695e418b6d031a3c3ce68e3b"
   integrity sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==
 
-std-env@^4.0.0-rc.1:
+std-env@^4.0.0-rc.1, std-env@^4.3.0:
   version "4.3.0"
   resolved "https://registry.yarnpkg.com/std-env/-/std-env-4.3.0.tgz#4e7231b61fd83219aa7f76f71fa8818b07e41321"
   integrity sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==
@@ -3144,10 +3104,10 @@ tinyrainbow@^2.0.0:
   resolved "https://registry.yarnpkg.com/tinyrainbow/-/tinyrainbow-2.0.0.tgz#9509b2162436315e80e3eee0fcce4474d2444294"
   integrity sha512-op4nsTR47R6p0vMUUoYl/a+ljLFVtlfaXkLQmqfLR1qHma1h/ysYk4hEXZ880bf2CYgTskvTa/e196Vd5dDQXw==
 
-tinyrainbow@^3.1.0:
-  version "3.1.1"
-  resolved "https://registry.yarnpkg.com/tinyrainbow/-/tinyrainbow-3.1.1.tgz#c0168387d3d8d70b6b3c2c0936de5fee738cea20"
-  integrity sha512-yau8yJdTt989Mm0Bd/236QnzEiPf2xLLTqUZRUJOo/3CB078LSwzei343DgtJVmfJKJE3TMINY1u42SQsP6mXw==
+tinyrainbow@^3.1.0, tinyrainbow@^3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/tinyrainbow/-/tinyrainbow-3.2.0.tgz#f62df4fda24415b353c08b9c38934b4b13877655"
+  integrity sha512-LgO3D9yZJjApUiuUfl9iFAwrtaX4+lok3wJIqttGoKCHlWUqHqbQpnxCf82L8FjgKsh4iGo78hqJwgL8F6To2A==
 
 tinyspy@^4.0.3:
   version "4.0.6"
