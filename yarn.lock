@@ -949,10 +949,10 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.64.12.tgz#e17fef0cfcf424a3b484c12819893682b847c988"
   integrity sha512-j5rXD4R/4DM5+V991AA9xOnG2Rwu2g3p5TPgu1Eu7apju0NUrLl+Bn/KpWc6wYJtlXqzwz1r+LNV1JeBU4VGvw==
 
-"@storybook/builder-vite@10.6.3":
-  version "10.6.3"
-  resolved "https://registry.yarnpkg.com/@storybook/builder-vite/-/builder-vite-10.6.3.tgz#84b4336465a87e60d4f1814bcb699362102e8635"
-  integrity sha512-1+WCZZg/fPxxyHDB5sFKniFt9/4RFUIzoNqMujv+BLRROM+gQeyUHvdvoyZOZ51+P8ee+/PgnNKHjsTupV+nOA==
+"@storybook/builder-vite@10.6.5":
+  version "10.6.5"
+  resolved "https://registry.yarnpkg.com/@storybook/builder-vite/-/builder-vite-10.6.5.tgz#a225b4292bba4430138f3191c72e67f14d86db15"
+  integrity sha512-udrGjg3yt38pz4FxplypXxw1creIGS7N6QS8xfvTFM8MQNtPyojT/gZdd4fhX0dFrQx5MMuJEYJA5gUBiPsLtg==
   dependencies:
     ts-dedent "^2.0.0"
 
@@ -962,17 +962,17 @@
   integrity sha512-FcOqPAXACP0I3oJ/ws6/rrPT9WGhu915Cg8D02a9YxLo0DE9zI+a9A5gRGvmQ09fiWPukqI8ZAEoQEdWUKMQdQ==
 
 "@storybook/html-vite@^10.6.2":
-  version "10.6.3"
-  resolved "https://registry.yarnpkg.com/@storybook/html-vite/-/html-vite-10.6.3.tgz#ad5ac318d16f8aee8603c7276ded46c3a7a6d417"
-  integrity sha512-a4k+EVYJNC56rhlnrTwF5vEZNUdNNAp1ukVWd5Bz3R208hXow7ZQOTpH1ZsgVp0pblEZQQuS9WItCs8PqZxZZQ==
+  version "10.6.5"
+  resolved "https://registry.yarnpkg.com/@storybook/html-vite/-/html-vite-10.6.5.tgz#a1861bc04dbbc25ad57c923e5abe45c5eb93857d"
+  integrity sha512-RYVuEAcYmAaz1v5Q3GQcryE+4ygSqYimnHYaWLjdBZaSudyvoxU1Y4+2Hij4JJhaJiUXB77szu2Z92GvjqFW0A==
   dependencies:
-    "@storybook/builder-vite" "10.6.3"
-    "@storybook/html" "10.6.3"
+    "@storybook/builder-vite" "10.6.5"
+    "@storybook/html" "10.6.5"
 
-"@storybook/html@10.6.3":
-  version "10.6.3"
-  resolved "https://registry.yarnpkg.com/@storybook/html/-/html-10.6.3.tgz#b6ad2c80be9a8cfa962baa363402465ef835bf62"
-  integrity sha512-J1Oyj1sD/TKsX8eOWFGFXJydxsLyIlbqj9/YlXLYdkB6L/YjGrALaVsQbGcIHvF+6x78DIwNDPdaMwZW+8boRg==
+"@storybook/html@10.6.5":
+  version "10.6.5"
+  resolved "https://registry.yarnpkg.com/@storybook/html/-/html-10.6.5.tgz#f72800c9b4d84928b16f43e44004b50c318649a5"
+  integrity sha512-KqmmYKL0nAPuhPmNo1d1tckx3uXn7wRHzVFEOyG80y1NM4F2HupRFD8IZiKk0kjiSieK06+Bift6q7ghjGWRYQ==
   dependencies:
     "@storybook/global" "^5.0.0"
     ts-dedent "^2.0.0"
