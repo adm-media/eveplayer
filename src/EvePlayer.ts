@@ -265,10 +265,9 @@ interface PossiblySafariCaptionTrack {
   [PENDING_SAFARI_CAPTION_TRACK]?: boolean;
 }
 
-declare class VjsSubsCapsButtonShape {
-  constructor(...args: unknown[]);
+type VjsSubsCapsButtonShape = new (...args: unknown[]) => {
   createItems(...args: unknown[]): { track?: PossiblySafariCaptionTrack }[];
-}
+};
 
 let _subsCapsButtonRegistered = false;
 
@@ -278,7 +277,7 @@ function ensureSubsCapsButtonRegistered(): void {
 
   const SubsCapsButton = videojs.getComponent(
     'SubsCapsButton'
-  ) as unknown as typeof VjsSubsCapsButtonShape;
+  ) as unknown as VjsSubsCapsButtonShape;
   if (!SubsCapsButton) return;
 
   class VjspSubsCapsButton extends SubsCapsButton {
@@ -2501,7 +2500,6 @@ export class EvePlayer {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _updateLiveBehindLabel(liveTracker: any): void {
     if (!this._liveBehindEl) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const seekToLiveEl = (this.vjs.el() as HTMLElement).querySelector('.vjs-seek-to-live-control');
       if (!seekToLiveEl) return;
       const span = document.createElement('span');
