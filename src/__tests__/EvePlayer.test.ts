@@ -147,7 +147,6 @@ const createMockTrackElement = (): MockTrackElement => {
 
 // mockInstance is populated each time videojs() is called (i.e., each new EvePlayer).
 // Typed as `any` to avoid Vitest generic-variance conflicts on vi.fn() reassignments.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let mockInstance: any;
 
 // Minimal Button base class for the custom control-bar component registration.
@@ -982,7 +981,7 @@ Thumbnail_000000001.jpg
       });
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} });
 
       player.setSource({
         sources: [{ src: 'https://cdn.example.com/stream.m3u8', type: 'application/x-mpegURL' }],
@@ -1006,7 +1005,7 @@ Thumbnail_000000001.jpg
       stubFetch(MPD_WITH_THUMBNAILS);
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} });
 
       player.setSource({ sources: [{ src: 'https://cdn.example.com/stream.mpd', type: 'application/dash+xml' }] });
       mockInstance.trigger('loadedmetadata');
@@ -1028,7 +1027,7 @@ Thumbnail_000000001.jpg
       stubFetch(MPD_WITH_THUMBNAILS);
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} });
 
       player.setSource({ sources: [{ src: 'https://cdn.example.com/stream.mpd', type: 'application/dash+xml' }] });
       mockInstance.trigger('loadedmetadata');
@@ -1062,7 +1061,7 @@ Thumbnail_000000001.jpg
       stubFetch(MPD_WITH_THUMBNAILS);
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} });
 
       player.setSource({ sources: [{ src: 'https://cdn.example.com/stream.mpd', type: 'application/dash+xml' }] });
       mockInstance.trigger('loadedmetadata');
@@ -1077,13 +1076,13 @@ Thumbnail_000000001.jpg
       stubFetch(MPD_WITH_THUMBNAILS);
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 300, top: 100, height: 5, right: 300, bottom: 105, x: 0, y: 100, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 300, top: 100, height: 5, right: 300, bottom: 105, x: 0, y: 100, toJSON() {} });
       const display = document.createElement('div');
       display.className = 'vjs-mouse-display';
       const tip = document.createElement('div');
       tip.className = 'vjs-time-tooltip';
       tip.getBoundingClientRect = () =>
-        ({ left: 0, width: 50, top: 60, height: 26, right: 50, bottom: 86, x: 0, y: 60, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 50, top: 60, height: 26, right: 50, bottom: 86, x: 0, y: 60, toJSON() {} });
       display.appendChild(tip);
       holder.appendChild(display);
 
@@ -1540,7 +1539,7 @@ Thumbnail_000000001.jpg
       ]);
     const withRect = (holder: HTMLElement, width = 300) => {
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width, top: 100, height: 5, right: width, bottom: 105, x: 0, y: 100, toJSON() {} }) as DOMRect;
+        ({ left: 0, width, top: 100, height: 5, right: width, bottom: 105, x: 0, y: 100, toJSON() {} });
     };
     const label = () => container.querySelector<HTMLElement>('.vjsp-chapter-label');
     const isVisible = (el: HTMLElement | null) => !!el?.classList.contains('vjsp-chapter-label--visible');
@@ -2561,7 +2560,6 @@ Thumbnail_000000001.jpg
       }));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const menuOf = (p: EvePlayer): HTMLElement => (p as any)._settingsMenu as HTMLElement;
     const open = () => mockInstance.trigger('vjsp:settings-menu-toggle');
     const rowLabels = (menu: HTMLElement) =>
@@ -2743,7 +2741,6 @@ Thumbnail_000000001.jpg
       container.remove();
       container = makeContainer();
       player = new EvePlayer(container, { quality: false, hideSpeed: true });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((player as any)._settingsMenu).toBeNull();
     });
 
@@ -2752,7 +2749,6 @@ Thumbnail_000000001.jpg
       container.remove();
       container = makeContainer();
       player = new EvePlayer(container, { settings: false });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((player as any)._settingsMenu).toBeNull();
     });
   });
@@ -2778,7 +2774,6 @@ Thumbnail_000000001.jpg
       const { playerRoot, menu } = buildPlayerRootWithAudioMenu();
       mockInstance.el = vi.fn(() => playerRoot);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (player as any)._hoistNativeMenus();
 
       expect(menu.parentElement).toBe(playerRoot);
@@ -2788,7 +2783,6 @@ Thumbnail_000000001.jpg
     it('re-hoists a menu that video.js rebuilds back inside the button', async () => {
       const { playerRoot, wrapper } = buildPlayerRootWithAudioMenu();
       mockInstance.el = vi.fn(() => playerRoot);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (player as any)._hoistNativeMenus();
 
       // Simulate MenuButton.update() inserting a fresh menu inside the wrapper.
@@ -2812,7 +2806,6 @@ Thumbnail_000000001.jpg
       playerRoot.appendChild(wrapper);
       mockInstance.el = vi.fn(() => playerRoot);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (player as any)._hoistNativeMenus();
 
       expect(menu.parentElement).toBe(playerRoot);
@@ -2823,7 +2816,6 @@ Thumbnail_000000001.jpg
     it('disconnects its observers on dispose', async () => {
       const { playerRoot, wrapper } = buildPlayerRootWithAudioMenu();
       mockInstance.el = vi.fn(() => playerRoot);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (player as any)._hoistNativeMenus();
       player.dispose();
 
@@ -2842,7 +2834,6 @@ Thumbnail_000000001.jpg
   // -------------------------------------------------------------------------
 
   describe('custom control-bar components', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async function videojsMock(): Promise<any> {
       return (await import('video.js')).default;
     }
@@ -2983,10 +2974,8 @@ Thumbnail_000000001.jpg
         liveCurrentTime: () => 95,
       };
       mockInstance.trigger('pause');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((player as any)._liveBehindInterval).not.toBeNull();
       mockInstance.trigger('play');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((player as any)._liveBehindInterval).toBeNull();
     });
   });
@@ -3141,7 +3130,7 @@ Thumbnail_000000001.jpg
       vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ text: () => Promise.resolve(MPD) })));
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 0, top: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 0, top: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON() {} });
 
       player.setSource({ sources: [{ src: 'https://cdn.example.com/x.mpd', type: 'application/dash+xml' }] });
       mockInstance.trigger('loadedmetadata');
@@ -3156,7 +3145,7 @@ Thumbnail_000000001.jpg
       vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ text: () => Promise.resolve(MPD) })));
       const holder = makeProgressHolder(container);
       holder.getBoundingClientRect = () =>
-        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} }) as DOMRect;
+        ({ left: 0, width: 300, top: 0, height: 5, right: 300, bottom: 5, x: 0, y: 0, toJSON() {} });
 
       player.setSource({ sources: [{ src: 'https://cdn.example.com/x.mpd', type: 'application/dash+xml' }] });
       mockInstance.trigger('loadedmetadata');
@@ -3554,7 +3543,6 @@ describe('EvePlayer.version', () => {
 describe('labels and translations', () => {
   let container: HTMLDivElement;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const menuOf = (p: EvePlayer): HTMLElement => (p as any)._settingsMenu as HTMLElement;
   const openMenu = () => mockInstance.trigger('vjsp:settings-menu-toggle');
   const menuTitle = (p: EvePlayer) =>

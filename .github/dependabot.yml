@@ -32,8 +32,10 @@ updates:
         update-types: ["version-update:semver-major"]
     groups:
       # Packages that must move together, at any update type.
+      eslint:
+        patterns: ["eslint", "@eslint/js"]
       typescript-eslint:
-        patterns: ["@typescript-eslint/*"]
+        patterns: ["typescript-eslint", "@typescript-eslint/*"]
       vitest:
         patterns: ["vitest", "@vitest/*"]
       storybook:

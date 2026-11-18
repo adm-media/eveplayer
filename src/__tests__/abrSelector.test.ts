@@ -10,9 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 // `this` shaped like a VHS handler.
 vi.mock('video.js', () => {
   const videojs = vi.fn();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (videojs as any).getComponent = vi.fn(() => null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (videojs as any).registerComponent = vi.fn();
   return { default: videojs };
 });
@@ -82,7 +80,7 @@ function makeHandler(init: HandlerInit) {
 }
 
 const run = (handler: Record<string, unknown>) =>
-  eveAbrPlaylistSelector.call(handler as never);
+  eveAbrPlaylistSelector.call(handler);
 
 // A 3-rung ladder with AVERAGE-BANDWIDTH, targets 6M / 3M / 0.6M.
 const ladder = () => [

@@ -147,7 +147,7 @@ function toOptions(args: PlaygroundArgs): PlayerOptions {
     if (value === undefined || sameValue(value, OPTION_DEFAULTS[key])) continue;
     options[key] = value;
   }
-  return options as PlayerOptions;
+  return options;
 }
 
 function toSource(args: PlaygroundArgs): SourceDescription {
