@@ -1035,10 +1035,10 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.64.12.tgz#e17fef0cfcf424a3b484c12819893682b847c988"
   integrity sha512-j5rXD4R/4DM5+V991AA9xOnG2Rwu2g3p5TPgu1Eu7apju0NUrLl+Bn/KpWc6wYJtlXqzwz1r+LNV1JeBU4VGvw==
 
-"@storybook/builder-vite@10.6.6":
-  version "10.6.6"
-  resolved "https://registry.yarnpkg.com/@storybook/builder-vite/-/builder-vite-10.6.6.tgz#3dd36810c17213f186076fc9f302944bd31e9b82"
-  integrity sha512-DIA992qGuPZpTZqupWuhw3upWc6Qphm0tQFfSnCpgr5Nlvhe0C5Mth9eYz7CUpy49szJ6eOgQ2V8ktKtKaXyNA==
+"@storybook/builder-vite@10.6.7":
+  version "10.6.7"
+  resolved "https://registry.yarnpkg.com/@storybook/builder-vite/-/builder-vite-10.6.7.tgz#d07a23b7d6363964ec92fdb412c3c0ba98172e59"
+  integrity sha512-6DI3XP4He/nMMK4vGLl9tkneygr5bJvYx5EwNZMzw15tCosvGuWRREBvWqTHjZdoRa8HJpqosoFm60splBoAew==
   dependencies:
     ts-dedent "^2.0.0"
 
@@ -1048,17 +1048,17 @@
   integrity sha512-FcOqPAXACP0I3oJ/ws6/rrPT9WGhu915Cg8D02a9YxLo0DE9zI+a9A5gRGvmQ09fiWPukqI8ZAEoQEdWUKMQdQ==
 
 "@storybook/html-vite@^10.6.2":
-  version "10.6.6"
-  resolved "https://registry.yarnpkg.com/@storybook/html-vite/-/html-vite-10.6.6.tgz#1d235fa28f9d8d06389f9559c9801a86a65a2f6e"
-  integrity sha512-2FGDzkBY+FzQNSLl2Vd3x/VRMzVrOshok9PU/ggpLD2j8FV2gD5KzqYTK6Wgzppd+C1Htp4ruUkTgLjUqXnEYQ==
+  version "10.6.7"
+  resolved "https://registry.yarnpkg.com/@storybook/html-vite/-/html-vite-10.6.7.tgz#3d675f657a201eb58522c37a1038d8590178986d"
+  integrity sha512-MBqAMr3htgvFA38ThzPLiE8KbtZZoVnWTdPDV/h3FACz8z0kDOUMGq1usieMbQixbxGeMoD4HERwRV/vkT8l2Q==
   dependencies:
-    "@storybook/builder-vite" "10.6.6"
-    "@storybook/html" "10.6.6"
+    "@storybook/builder-vite" "10.6.7"
+    "@storybook/html" "10.6.7"
 
-"@storybook/html@10.6.6":
-  version "10.6.6"
-  resolved "https://registry.yarnpkg.com/@storybook/html/-/html-10.6.6.tgz#626b341efe3049f1d0b9f8b50407c96820b5c2ae"
-  integrity sha512-UhtiKLLLgNI0vW84/Icglbingh9wzWf+VZpa3c+Idw8TTayGJ73MnV4V3NpLzb5eDcXtMTa2yeMocoxkzhYf/A==
+"@storybook/html@10.6.7":
+  version "10.6.7"
+  resolved "https://registry.yarnpkg.com/@storybook/html/-/html-10.6.7.tgz#c9029c2e9dc51dea72831a7a13fb12f14433bcce"
+  integrity sha512-WJ9JujBalze+XPJBkdGtsbpBg5S3lcW37reqfkV/Rhw7fnGBVbRLovNvW7gdl/QTNuQyI2bkDfKrpdK1wcqh6Q==
   dependencies:
     "@storybook/global" "^5.0.0"
     ts-dedent "^2.0.0"
@@ -2631,7 +2631,7 @@ resolve@^1.1.7:
     path-parse "^1.0.7"
     supports-preserve-symlinks-flag "^1.0.0"
 
-rolldown@~1.2.16:
+rolldown@~1.2.18:
   version "1.2.19"
   resolved "https://registry.yarnpkg.com/rolldown/-/rolldown-1.2.19.tgz#259be7978a73d9f223480f8cd10d39e45075e159"
   integrity sha512-QIiV1J9d0pzN4jeeTH4sjPy0AZ6cAy2cG0ExeoE1+U8Rvj+hR3gYkokx0YbeUNGlZqiQJJ2utcETe0oKXwzsuA==
@@ -2776,9 +2776,9 @@ std-env@^4.3.0:
   integrity sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==
 
 storybook@^10.6.2:
-  version "10.6.6"
-  resolved "https://registry.yarnpkg.com/storybook/-/storybook-10.6.6.tgz#9dd31e2a3c72dccd31f6dc3b19933c1625ab15f1"
-  integrity sha512-lCROrR6Fj+WDBoJu4yp6o/cqcg376Sg85hiUnTh00I0EStk8xFRvTdzRuNWHlLA8itQrkz6Lo/IqFZ1FVXMiAA==
+  version "10.6.7"
+  resolved "https://registry.yarnpkg.com/storybook/-/storybook-10.6.7.tgz#60da32cb0292c7df6c4cbf6019b5aac52e6c02fe"
+  integrity sha512-/1h87XqC+8tZ5PQ/GVWOg78tCQuEAshYWwok5niBcnHEKzZy6Ls06uuT5/rhQ3iUB0y8iexEVHmUe3jaaxNguw==
   dependencies:
     "@storybook/global" "^5.0.0"
     "@storybook/icons" "^2.0.2"
@@ -3065,14 +3065,14 @@ videojs-vtt.js@0.15.5:
     global "^4.3.1"
 
 vite@^8.3.1:
-  version "8.3.6"
-  resolved "https://registry.yarnpkg.com/vite/-/vite-8.3.6.tgz#ff2eb6b0b18e910c08a79c59a80faebecd422808"
-  integrity sha512-UI7dK29NnS54Fk+mmo7o+jI6U8Fp7hDl+X5Q1k45WH+d4dSlbLVUETGQ+hfkNgvLQGyoElPj837nZyv4MBc0VA==
+  version "8.3.8"
+  resolved "https://registry.yarnpkg.com/vite/-/vite-8.3.8.tgz#ad713bf2e46c241f344b5e50401297b77a08621d"
+  integrity sha512-LzOn3h9rG/0vhLdXrV4yJ4QFA9eEoqCl+Yx+kGJd7aB9w6nfNgVHKSYwLPZUHrz4ZGa+t+kXjV9itvcHDLQouA==
   dependencies:
     lightningcss "^1.33.0"
     picomatch "^4.0.7"
     postcss "^8.5.32"
-    rolldown "~1.2.16"
+    rolldown "~1.2.18"
     tinyglobby "^0.2.17"
   optionalDependencies:
     fsevents "~2.3.3"
